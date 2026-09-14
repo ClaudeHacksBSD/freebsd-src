@@ -751,10 +751,14 @@ _bcm2712=	bcm2712
 <<<<<<< HEAD
 _bcm2712_pcie=	bcm2712_pcie
 <<<<<<< HEAD
+<<<<<<< HEAD
 _cyw=		cyw
 _rp1_eth=	rp1_eth
 _rp1_gpio=	rp1_gpio
 _rp1_pcie2_recon=	rp1_pcie2_recon
+=======
+_rp1_gpio=	rp1_gpio
+>>>>>>> ac40e823a250 (arm64: add RP1 GPIO and pinctrl driver)
 _rpi5_fan=	rpi5_fan
 =======
 >>>>>>> f2251335e2c0 (arm64: add BCM2712 PWM and thermal sensor support)
