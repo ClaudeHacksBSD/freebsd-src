@@ -952,6 +952,13 @@ rpi5_modevent(module_t mod, int event, void *data)
 					    "Current fan state (0-4)");
 >>>>>>> f77e3acacb0f (arm64: add Raspberry Pi 5 cooling fan controller)
 					SYSCTL_ADD_PROC(&rpi5_sysctl_ctx, SYSCTL_CHILDREN(fan_tree),
+					    OID_AUTO, "thresholds",
+					    CTLTYPE_STRING | CTLFLAG_RW |
+					    CTLFLAG_MPSAFE,
+					    NULL, 0,
+					    rpi5_sysctl_thresholds_handler, "A",
+					    "All four thresholds (mC), ascending, set atomically");
+					SYSCTL_ADD_PROC(&rpi5_sysctl_ctx, SYSCTL_CHILDREN(fan_tree),
 					    OID_AUTO, "rpm",
 					    CTLTYPE_UINT | CTLFLAG_RD | CTLFLAG_MPSAFE,
 					    NULL, 0, rpi5_sysctl_fan_rpm_handler, "IU",
