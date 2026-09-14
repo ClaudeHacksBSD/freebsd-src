@@ -747,27 +747,12 @@ _cxgb=		cxgb
 _armv8crypto=	armv8crypto
 _armv8_rng=	armv8_rng
 _bcm2712=	bcm2712
-<<<<<<< HEAD
-<<<<<<< HEAD
 _bcm2712_pcie=	bcm2712_pcie
-<<<<<<< HEAD
-<<<<<<< HEAD
 _cyw=		cyw
 _rp1_eth=	rp1_eth
 _rp1_gpio=	rp1_gpio
 _rp1_pcie2_recon=	rp1_pcie2_recon
-=======
-_rp1_gpio=	rp1_gpio
->>>>>>> ac40e823a250 (arm64: add RP1 GPIO and pinctrl driver)
 _rpi5_fan=	rpi5_fan
-=======
->>>>>>> f2251335e2c0 (arm64: add BCM2712 PWM and thermal sensor support)
-=======
-_bcm2712_pcie=	bcm2712_pcie
->>>>>>> 08bca926f51b (arm64: add BCM2712 PCIe interrupt shim for RP1)
-=======
-_rpi5_fan=	rpi5_fan
->>>>>>> f77e3acacb0f (arm64: add Raspberry Pi 5 cooling fan controller)
 _dpaa2=		dpaa2
 _sff=		sff
 _em=		em
