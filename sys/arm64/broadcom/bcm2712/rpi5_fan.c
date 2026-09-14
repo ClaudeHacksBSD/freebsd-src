@@ -332,6 +332,60 @@ rpi5_hyst_floor(uint32_t threshold, uint32_t hyst)
 	return (hyst >= threshold ? 0 : threshold - hyst);
 }
 
+/*
+ * Select the fan state for a temperature, given the state currently held.
+ *
+ * Rising edge acts at once: the state is the highest level whose entry
+ * threshold the temperature has reached.
+ *
+ * Falling edge is sticky.  State N is entered at temp[N-1] and released only
+ * once the temperature has fallen a full hysteresis below that same
+ * threshold -- temp < temp[N-1] - hyst[N-1].  The gap between those two
+ * points is the hold band, and it is what stops the fan hunting: a curve
+ * whose threshold sits near the cooled equilibrium would otherwise toggle
+ * every thermal time constant, because switching the fan on drops the
+ * temperature back below the threshold that switched it on.
+ *
+ * Several levels can be shed in one tick if the temperature fell a long way,
+ * but never below the level the rising-edge test alone would choose.
+ *
+ * The previous formulation tested the hold band only inside a branch already
+ * guarded by "temp >= threshold", where it was always true, so no hysteresis
+ * setting could change the outcome.
+ */
+static uint32_t
+rpi5_next_state(uint32_t temp, uint32_t state)
+{
+	uint32_t *entry, *hyst;
+	uint32_t up, down;
+
+	if (temp >= cooling_fan.fan_temp3)
+		up = 4;
+	else if (temp >= cooling_fan.fan_temp2)
+		up = 3;
+	else if (temp >= cooling_fan.fan_temp1)
+		up = 2;
+	else if (temp >= cooling_fan.fan_temp0)
+		up = 1;
+	else
+		up = 0;
+
+	if (up >= state)
+		return (up);
+
+	down = state;
+	while (down > up) {
+		entry = rpi5_fan_temp_slot(down - 1);
+		hyst = rpi5_fan_hyst_slot(down - 1);
+		if (entry == NULL || hyst == NULL)
+			break;
+		if (temp >= rpi5_hyst_floor(*entry, *hyst))
+			break;			/* still inside the hold band */
+		down--;
+	}
+	return (down);
+}
+
 /* Check if bcm2712 module is available */
 static int
 rpi5_check_bcm2712(void)
