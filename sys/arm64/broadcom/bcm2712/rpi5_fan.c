@@ -302,6 +302,21 @@ rpi5_fan_temp_slot(int level)
 }
 
 /*
+ * Return the hysteresis slot for a fan level, or NULL outside 0..3.
+ */
+static uint32_t *
+rpi5_fan_hyst_slot(int level)
+{
+	switch (level) {
+	case 0:		return (&cooling_fan.fan_temp0_hyst);
+	case 1:		return (&cooling_fan.fan_temp1_hyst);
+	case 2:		return (&cooling_fan.fan_temp2_hyst);
+	case 3:		return (&cooling_fan.fan_temp3_hyst);
+	default:	return (NULL);
+	}
+}
+
+/*
  * Saturating "threshold - hysteresis".
  *
  * Both operands are uint32_t, so a hysteresis larger than the threshold it
@@ -894,12 +909,12 @@ rpi5_modevent(module_t mod, int event, void *data)
 					SYSCTL_ADD_PROC(&rpi5_sysctl_ctx, SYSCTL_CHILDREN(fan_tree),
 					    OID_AUTO, "temp2_hyst",
 					    CTLTYPE_UINT | CTLFLAG_RW | CTLFLAG_MPSAFE,
-					    &cooling_fan.fan_temp2_hyst, 0, rpi5_sysctl_hyst_handler, "IU",
+					    &cooling_fan.fan_temp2_hyst, 2, rpi5_sysctl_hyst_handler, "IU",
 					    "Level 2 hysteresis (mC)");
 					SYSCTL_ADD_PROC(&rpi5_sysctl_ctx, SYSCTL_CHILDREN(fan_tree),
 					    OID_AUTO, "temp3_hyst",
 					    CTLTYPE_UINT | CTLFLAG_RW | CTLFLAG_MPSAFE,
-					    &cooling_fan.fan_temp3_hyst, 0, rpi5_sysctl_hyst_handler, "IU",
+					    &cooling_fan.fan_temp3_hyst, 3, rpi5_sysctl_hyst_handler, "IU",
 					    "Level 3 hysteresis (mC)");
 
 					/* PWM speeds (0-255) */
