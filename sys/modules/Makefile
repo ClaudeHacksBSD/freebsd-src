@@ -359,6 +359,7 @@ SUBDIR=	\
 	rge \
 	rl \
 	${_rockchip} \
+	${_rp1_eth} \
 	${_rp1_gpio} \
 	${_rpi5_fan} \
 	rtsx \
@@ -744,6 +745,7 @@ _armv8crypto=	armv8crypto
 _armv8_rng=	armv8_rng
 _bcm2712=	bcm2712
 _bcm2712_pcie=	bcm2712_pcie
+_rp1_eth=	rp1_eth
 _rp1_gpio=	rp1_gpio
 _rpi5_fan=	rpi5_fan
 _dpaa2=		dpaa2
