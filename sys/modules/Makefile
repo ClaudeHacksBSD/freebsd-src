@@ -750,6 +750,7 @@ _bcm2712=	bcm2712
 <<<<<<< HEAD
 <<<<<<< HEAD
 _bcm2712_pcie=	bcm2712_pcie
+<<<<<<< HEAD
 _cyw=		cyw
 _rp1_eth=	rp1_eth
 _rp1_gpio=	rp1_gpio
@@ -760,6 +761,9 @@ _rpi5_fan=	rpi5_fan
 =======
 _bcm2712_pcie=	bcm2712_pcie
 >>>>>>> 08bca926f51b (arm64: add BCM2712 PCIe interrupt shim for RP1)
+=======
+_rpi5_fan=	rpi5_fan
+>>>>>>> f77e3acacb0f (arm64: add Raspberry Pi 5 cooling fan controller)
 _dpaa2=		dpaa2
 _sff=		sff
 _em=		em

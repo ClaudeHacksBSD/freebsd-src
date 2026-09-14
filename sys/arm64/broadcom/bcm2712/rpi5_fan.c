@@ -63,10 +63,15 @@ struct rpi5_cooling_fan {
 
 	/* Current fan state (0-4) */
 	uint32_t fan_current_state;
+<<<<<<< HEAD
+=======
+	uint32_t fan_prev_state;
+>>>>>>> f77e3acacb0f (arm64: add Raspberry Pi 5 cooling fan controller)
 
 	/* Current CPU temperature (mC) */
 	uint32_t cpu_temp;
 
+<<<<<<< HEAD
 	/*
 	 * Low and high water marks of the thermal sensor, used by calibration
 	 * to express results as a rise above ambient so a cooler measured on a
@@ -82,6 +87,8 @@ struct rpi5_cooling_fan {
 	uint32_t temp_max;
 	bool temp_seen;
 
+=======
+>>>>>>> f77e3acacb0f (arm64: add Raspberry Pi 5 cooling fan controller)
 	/* Thermal management */
 	int thermal_active;
 	struct callout thermal_callout;
@@ -105,16 +112,28 @@ static struct rpi5_cooling_fan cooling_fan = {
 	.fan_temp0_speed = 75,
 	.fan_temp1_speed = 125,
 	.fan_temp2_speed = 175,
+<<<<<<< HEAD
 	.fan_temp3_speed = 255,
 
 	.fan_current_state = 0,
 	.cpu_temp = 50000,
 	.temp_seen = false,
+=======
+	.fan_temp3_speed = 250,
+
+	.fan_current_state = 0,
+	.fan_prev_state = 0,
+	.cpu_temp = 50000,
+>>>>>>> f77e3acacb0f (arm64: add Raspberry Pi 5 cooling fan controller)
 };
 
 /* Forward declarations */
 static void rpi5_thermal_tick(void *arg);
 static void rpi5_update_fan_state(void);
+<<<<<<< HEAD
+=======
+static int rpi5_find_pwm_device(void);
+>>>>>>> f77e3acacb0f (arm64: add Raspberry Pi 5 cooling fan controller)
 
 /* sysctl handlers */
 static int rpi5_sysctl_temp_handler(SYSCTL_HANDLER_ARGS);
@@ -123,6 +142,7 @@ static int rpi5_sysctl_speed_handler(SYSCTL_HANDLER_ARGS);
 static int rpi5_sysctl_current_temp_handler(SYSCTL_HANDLER_ARGS);
 static int rpi5_sysctl_current_state_handler(SYSCTL_HANDLER_ARGS);
 static int rpi5_sysctl_fan_rpm_handler(SYSCTL_HANDLER_ARGS);
+<<<<<<< HEAD
 static int rpi5_sysctl_thresholds_handler(SYSCTL_HANDLER_ARGS);
 static int rpi5_sysctl_watermark_handler(SYSCTL_HANDLER_ARGS);
 static void rpi5_warn_collapsed(int level, uint32_t lo, uint32_t hi);
@@ -283,6 +303,8 @@ rpi5_region_speed(uint32_t region)
 	}
 	return (speed);
 }
+=======
+>>>>>>> f77e3acacb0f (arm64: add Raspberry Pi 5 cooling fan controller)
 
 /* Check if bcm2712 module is available */
 static int
@@ -311,13 +333,39 @@ rpi5_update_fan_state(void)
 	new_state = cooling_fan.fan_current_state;
 
 	/* Thermal control logic with hysteresis */
+<<<<<<< HEAD
 	new_state = rpi5_next_state(temp, cooling_fan.fan_current_state);
 
+=======
+	if (temp >= cooling_fan.fan_temp3) {
+		new_state = 4;  /* Max speed */
+	} else if (temp >= cooling_fan.fan_temp2 &&
+	           (cooling_fan.fan_prev_state < 3 ||
+	            temp >= (cooling_fan.fan_temp2 - cooling_fan.fan_temp2_hyst))) {
+		new_state = 3;  /* High speed */
+	} else if (temp >= cooling_fan.fan_temp1 &&
+	           (cooling_fan.fan_prev_state < 2 ||
+	            temp >= (cooling_fan.fan_temp1 - cooling_fan.fan_temp1_hyst))) {
+		new_state = 2;  /* Medium speed */
+	} else if (temp >= cooling_fan.fan_temp0 &&
+	           (cooling_fan.fan_prev_state == 0 ||
+	            temp >= (cooling_fan.fan_temp0 - cooling_fan.fan_temp0_hyst))) {
+		new_state = 1;  /* Low speed */
+	} else {
+		new_state = 0;  /* Idle */
+	}
+
+	/* Track state transitions for hysteresis bookkeeping and debug logging. */
+>>>>>>> f77e3acacb0f (arm64: add Raspberry Pi 5 cooling fan controller)
 	if (new_state != cooling_fan.fan_current_state) {
 		if (rpi5_debug)
 			printf("rpi5_fan: Fan state %u->%u (temp %u.%uC)\n",
 			    cooling_fan.fan_current_state, new_state,
 			    temp / 1000, (temp % 1000) / 100);
+<<<<<<< HEAD
+=======
+		cooling_fan.fan_prev_state = cooling_fan.fan_current_state;
+>>>>>>> f77e3acacb0f (arm64: add Raspberry Pi 5 cooling fan controller)
 		cooling_fan.fan_current_state = new_state;
 	}
 
@@ -332,10 +380,25 @@ rpi5_update_fan_state(void)
 	 *     current_state == N previously had no effect until the next
 	 *     state transition.  Now it takes effect within one second.
 	 *
+<<<<<<< HEAD
 	 * Below temp0 the fan stops outright.  See rpi5_region_speed() for the
 	 * region-to-knob mapping.
 	 */
 	speed = rpi5_region_speed(cooling_fan.fan_current_state);
+=======
+	 * State 0 idles at fan_temp0_speed (minimum always-on speed) rather
+	 * than 0 so the fan is never completely stopped — matching Pi 5
+	 * active-cooler design intent.
+	 */
+	switch (cooling_fan.fan_current_state) {
+	case 0:  speed = cooling_fan.fan_temp0_speed; break;  /* Idle min */
+	case 1:  speed = cooling_fan.fan_temp1_speed; break;  /* Low */
+	case 2:  speed = cooling_fan.fan_temp2_speed; break;  /* Medium */
+	case 3:  speed = cooling_fan.fan_temp3_speed; break;  /* High */
+	case 4:  speed = cooling_fan.fan_temp3_speed; break;  /* Max (same as High) */
+	default: speed = cooling_fan.fan_temp0_speed; break;
+	}
+>>>>>>> f77e3acacb0f (arm64: add Raspberry Pi 5 cooling fan controller)
 
 	/* Convert speed (0-255) to duty cycle nanoseconds */
 	duty = (speed * period) / 255;
@@ -365,6 +428,7 @@ rpi5_thermal_tick(void *arg)
 		temp = cooling_fan.cpu_temp;
 	} else {
 		cooling_fan.cpu_temp = temp;
+<<<<<<< HEAD
 
 		/*
 		 * Seed both marks from the first real reading rather than the
@@ -381,6 +445,8 @@ rpi5_thermal_tick(void *arg)
 			if (temp > cooling_fan.temp_max)
 				cooling_fan.temp_max = temp;
 		}
+=======
+>>>>>>> f77e3acacb0f (arm64: add Raspberry Pi 5 cooling fan controller)
 	}
 
 	/* Update fan based on new temperature */
@@ -397,8 +463,11 @@ static int
 rpi5_sysctl_temp_handler(SYSCTL_HANDLER_ARGS)
 {
 	uint32_t *temp_ptr = (uint32_t *)arg1;
+<<<<<<< HEAD
 	int level = (int)arg2;
 	uint32_t *lower, *upper, *hyst;
+=======
+>>>>>>> f77e3acacb0f (arm64: add Raspberry Pi 5 cooling fan controller)
 	uint32_t temp;
 	int error;
 
@@ -411,6 +480,7 @@ rpi5_sysctl_temp_handler(SYSCTL_HANDLER_ARGS)
 		return (error);
 
 	/* Validate range: 0-120°C */
+<<<<<<< HEAD
 	if (temp > RPI5_FAN_TEMP_MAX)
 		return (EINVAL);
 
@@ -461,6 +531,12 @@ rpi5_sysctl_temp_handler(SYSCTL_HANDLER_ARGS)
 		printf("rpi5_fan: temp%d_hyst (%u mC) >= temp%d (%u mC): "
 		    "hysteresis floor clamps to 0\n", level, *hyst, level, temp);
 
+=======
+	if (temp > 120000)
+		return (EINVAL);
+
+	mtx_lock(&cooling_fan.mtx);
+>>>>>>> f77e3acacb0f (arm64: add Raspberry Pi 5 cooling fan controller)
 	*temp_ptr = temp;
 	mtx_unlock(&cooling_fan.mtx);
 
@@ -471,8 +547,11 @@ static int
 rpi5_sysctl_hyst_handler(SYSCTL_HANDLER_ARGS)
 {
 	uint32_t *hyst_ptr = (uint32_t *)arg1;
+<<<<<<< HEAD
 	int level = (int)arg2;
 	uint32_t *threshold;
+=======
+>>>>>>> f77e3acacb0f (arm64: add Raspberry Pi 5 cooling fan controller)
 	uint32_t hyst;
 	int error;
 
@@ -485,6 +564,7 @@ rpi5_sysctl_hyst_handler(SYSCTL_HANDLER_ARGS)
 		return (error);
 
 	/* Validate range: 0-10°C */
+<<<<<<< HEAD
 	if (hyst > RPI5_FAN_HYST_MAX)
 		return (EINVAL);
 
@@ -501,6 +581,12 @@ rpi5_sysctl_hyst_handler(SYSCTL_HANDLER_ARGS)
 		    "hysteresis floor clamps to 0\n", level, hyst, level,
 		    *threshold);
 
+=======
+	if (hyst > 10000)
+		return (EINVAL);
+
+	mtx_lock(&cooling_fan.mtx);
+>>>>>>> f77e3acacb0f (arm64: add Raspberry Pi 5 cooling fan controller)
 	*hyst_ptr = hyst;
 	mtx_unlock(&cooling_fan.mtx);
 
@@ -523,7 +609,11 @@ rpi5_sysctl_speed_handler(SYSCTL_HANDLER_ARGS)
 		return (error);
 
 	/* Validate range: 0-255 */
+<<<<<<< HEAD
 	if (speed > RPI5_FAN_SPEED_MAX)
+=======
+	if (speed > 255)
+>>>>>>> f77e3acacb0f (arm64: add Raspberry Pi 5 cooling fan controller)
 		return (EINVAL);
 
 	mtx_lock(&cooling_fan.mtx);
@@ -566,6 +656,7 @@ rpi5_sysctl_fan_rpm_handler(SYSCTL_HANDLER_ARGS)
 	return (sysctl_handle_int(oidp, &rpm, 0, req));
 }
 
+<<<<<<< HEAD
 /*
  * Warn about a threshold pair that collapses a fan state.  Caller holds the
  * softc mutex.
@@ -691,6 +782,8 @@ rpi5_sysctl_watermark_handler(SYSCTL_HANDLER_ARGS)
 	return (0);
 }
 
+=======
+>>>>>>> f77e3acacb0f (arm64: add Raspberry Pi 5 cooling fan controller)
 /* Module load handler */
 static int
 rpi5_modevent(module_t mod, int event, void *data)
@@ -732,6 +825,7 @@ rpi5_modevent(module_t mod, int event, void *data)
 
 				if (fan_tree != NULL) {
 					/* Temperature thresholds (in milli-Celsius) */
+<<<<<<< HEAD
 					SYSCTL_ADD_PROC(&rpi5_sysctl_ctx, SYSCTL_CHILDREN(fan_tree),
 					    OID_AUTO, "temp0",
 					    CTLTYPE_UINT | CTLFLAG_RW | CTLFLAG_MPSAFE,
@@ -829,6 +923,70 @@ rpi5_modevent(module_t mod, int event, void *data)
 					    NULL, 0,
 					    rpi5_sysctl_thresholds_handler, "A",
 					    "All four thresholds (mC), ascending, set atomically");
+=======
+					SYSCTL_ADD_UINT(&rpi5_sysctl_ctx, SYSCTL_CHILDREN(fan_tree),
+					    OID_AUTO, "temp0", CTLFLAG_RW | CTLFLAG_MPSAFE,
+					    &cooling_fan.fan_temp0, 0,
+					    "Level 0 temperature threshold (mC)");
+					SYSCTL_ADD_UINT(&rpi5_sysctl_ctx, SYSCTL_CHILDREN(fan_tree),
+					    OID_AUTO, "temp1", CTLFLAG_RW | CTLFLAG_MPSAFE,
+					    &cooling_fan.fan_temp1, 0,
+					    "Level 1 temperature threshold (mC)");
+					SYSCTL_ADD_UINT(&rpi5_sysctl_ctx, SYSCTL_CHILDREN(fan_tree),
+					    OID_AUTO, "temp2", CTLFLAG_RW | CTLFLAG_MPSAFE,
+					    &cooling_fan.fan_temp2, 0,
+					    "Level 2 temperature threshold (mC)");
+					SYSCTL_ADD_UINT(&rpi5_sysctl_ctx, SYSCTL_CHILDREN(fan_tree),
+					    OID_AUTO, "temp3", CTLFLAG_RW | CTLFLAG_MPSAFE,
+					    &cooling_fan.fan_temp3, 0,
+					    "Level 3 temperature threshold (mC)");
+
+					/* Hysteresis values */
+					SYSCTL_ADD_UINT(&rpi5_sysctl_ctx, SYSCTL_CHILDREN(fan_tree),
+					    OID_AUTO, "temp0_hyst", CTLFLAG_RW | CTLFLAG_MPSAFE,
+					    &cooling_fan.fan_temp0_hyst, 0,
+					    "Level 0 hysteresis (mC)");
+					SYSCTL_ADD_UINT(&rpi5_sysctl_ctx, SYSCTL_CHILDREN(fan_tree),
+					    OID_AUTO, "temp1_hyst", CTLFLAG_RW | CTLFLAG_MPSAFE,
+					    &cooling_fan.fan_temp1_hyst, 0,
+					    "Level 1 hysteresis (mC)");
+					SYSCTL_ADD_UINT(&rpi5_sysctl_ctx, SYSCTL_CHILDREN(fan_tree),
+					    OID_AUTO, "temp2_hyst", CTLFLAG_RW | CTLFLAG_MPSAFE,
+					    &cooling_fan.fan_temp2_hyst, 0,
+					    "Level 2 hysteresis (mC)");
+					SYSCTL_ADD_UINT(&rpi5_sysctl_ctx, SYSCTL_CHILDREN(fan_tree),
+					    OID_AUTO, "temp3_hyst", CTLFLAG_RW | CTLFLAG_MPSAFE,
+					    &cooling_fan.fan_temp3_hyst, 0,
+					    "Level 3 hysteresis (mC)");
+
+					/* PWM speeds (0-255) */
+					SYSCTL_ADD_UINT(&rpi5_sysctl_ctx, SYSCTL_CHILDREN(fan_tree),
+					    OID_AUTO, "speed0", CTLFLAG_RW | CTLFLAG_MPSAFE,
+					    &cooling_fan.fan_temp0_speed, 0,
+					    "Level 0 PWM speed (0-255)");
+					SYSCTL_ADD_UINT(&rpi5_sysctl_ctx, SYSCTL_CHILDREN(fan_tree),
+					    OID_AUTO, "speed1", CTLFLAG_RW | CTLFLAG_MPSAFE,
+					    &cooling_fan.fan_temp1_speed, 0,
+					    "Level 1 PWM speed (0-255)");
+					SYSCTL_ADD_UINT(&rpi5_sysctl_ctx, SYSCTL_CHILDREN(fan_tree),
+					    OID_AUTO, "speed2", CTLFLAG_RW | CTLFLAG_MPSAFE,
+					    &cooling_fan.fan_temp2_speed, 0,
+					    "Level 2 PWM speed (0-255)");
+					SYSCTL_ADD_UINT(&rpi5_sysctl_ctx, SYSCTL_CHILDREN(fan_tree),
+					    OID_AUTO, "speed3", CTLFLAG_RW | CTLFLAG_MPSAFE,
+					    &cooling_fan.fan_temp3_speed, 0,
+					    "Level 3 PWM speed (0-255)");
+
+					/* Read-only status */
+					SYSCTL_ADD_UINT(&rpi5_sysctl_ctx, SYSCTL_CHILDREN(fan_tree),
+					    OID_AUTO, "cpu_temp", CTLFLAG_RD | CTLFLAG_MPSAFE,
+					    &cooling_fan.cpu_temp, 0,
+					    "Current CPU temperature (mC)");
+					SYSCTL_ADD_UINT(&rpi5_sysctl_ctx, SYSCTL_CHILDREN(fan_tree),
+					    OID_AUTO, "current_state", CTLFLAG_RD | CTLFLAG_MPSAFE,
+					    &cooling_fan.fan_current_state, 0,
+					    "Current fan state (0-4)");
+>>>>>>> f77e3acacb0f (arm64: add Raspberry Pi 5 cooling fan controller)
 					SYSCTL_ADD_PROC(&rpi5_sysctl_ctx, SYSCTL_CHILDREN(fan_tree),
 					    OID_AUTO, "rpm",
 					    CTLTYPE_UINT | CTLFLAG_RD | CTLFLAG_MPSAFE,
@@ -892,5 +1050,9 @@ static moduledata_t rpi5_mod = {
 };
 
 DECLARE_MODULE(rpi5_fan, rpi5_mod, SI_SUB_DRIVERS, SI_ORDER_MIDDLE);
+<<<<<<< HEAD
 MODULE_VERSION(rpi5_fan, 2);
+=======
+MODULE_VERSION(rpi5_fan, 1);
+>>>>>>> f77e3acacb0f (arm64: add Raspberry Pi 5 cooling fan controller)
 MODULE_DEPEND(rpi5_fan, bcm2712, 1, 1, 1);
