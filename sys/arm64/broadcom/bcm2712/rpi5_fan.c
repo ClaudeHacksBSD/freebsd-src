@@ -386,6 +386,45 @@ rpi5_next_state(uint32_t temp, uint32_t state)
 	return (down);
 }
 
+/*
+ * Duty for a fan region.
+ *
+ * Four thresholds cut the temperature axis into five regions, and each region
+ * above the lowest is governed by one speed knob:
+ *
+ *	region 0   T <  temp0             fan off
+ *	region 1   temp0 <= T < temp1     speed0
+ *	region 2   temp1 <= T < temp2     speed1
+ *	region 3   temp2 <= T < temp3     speed2
+ *	region 4   T >= temp3             speed3
+ *
+ * The region number equals the state number from rpi5_next_state(), so the
+ * hold band that governs leaving a state is also the hold band that governs
+ * leaving its region.
+ *
+ * Take the maximum over every knob the region has passed, not just its own.
+ * Nothing validates that the speed table ascends, and with a descending entry
+ * a plain "speed = speed[region-1]" would slow the fan down as the die got
+ * hotter.  A maximum over a growing prefix is non-decreasing in temperature
+ * whatever order the table is in, which is the property actually worth
+ * guaranteeing.  Region 0 needs no special case: its prefix is empty, so the
+ * maximum is 0 and no knob can lift the fan off its stop.
+ */
+static uint32_t
+rpi5_region_speed(uint32_t region)
+{
+	uint32_t *sp, speed;
+	int i;
+
+	speed = 0;
+	for (i = 0; i < 4 && (uint32_t)i < region; i++) {
+		sp = rpi5_fan_speed_slot(i);
+		if (sp != NULL && *sp > speed)
+			speed = *sp;
+	}
+	return (speed);
+}
+
 /* Check if bcm2712 module is available */
 static int
 rpi5_check_bcm2712(void)
@@ -587,7 +626,6 @@ rpi5_sysctl_hyst_handler(SYSCTL_HANDLER_ARGS)
 		return (error);
 
 	/* Validate range: 0-10°C */
-<<<<<<< HEAD
 	if (hyst > RPI5_FAN_HYST_MAX)
 		return (EINVAL);
 
@@ -884,6 +922,7 @@ rpi5_modevent(module_t mod, int event, void *data)
 					    CTLTYPE_UINT | CTLFLAG_RW | CTLFLAG_MPSAFE,
 					    &cooling_fan.fan_temp0_speed, 0, rpi5_sysctl_speed_handler, "IU",
 					    "PWM speed for temp0 <= T < temp1 (0-255)");
+<<<<<<< HEAD
 					SYSCTL_ADD_PROC(&rpi5_sysctl_ctx, SYSCTL_CHILDREN(fan_tree),
 					    OID_AUTO, "speed1",
 					    CTLTYPE_UINT | CTLFLAG_RW | CTLFLAG_MPSAFE,
@@ -980,18 +1019,18 @@ rpi5_modevent(module_t mod, int event, void *data)
 					SYSCTL_ADD_PROC(&rpi5_sysctl_ctx, SYSCTL_CHILDREN(fan_tree),
 					    OID_AUTO, "speed1",
 					    CTLTYPE_UINT | CTLFLAG_RW | CTLFLAG_MPSAFE,
-					    &cooling_fan.fan_temp1_speed, 0, rpi5_sysctl_speed_handler, "IU",
-					    "Level 1 PWM speed (0-255)");
+					    &cooling_fan.fan_temp1_speed, 1, rpi5_sysctl_speed_handler, "IU",
+					    "PWM speed for temp1 <= T < temp2 (0-255)");
 					SYSCTL_ADD_PROC(&rpi5_sysctl_ctx, SYSCTL_CHILDREN(fan_tree),
 					    OID_AUTO, "speed2",
 					    CTLTYPE_UINT | CTLFLAG_RW | CTLFLAG_MPSAFE,
-					    &cooling_fan.fan_temp2_speed, 0, rpi5_sysctl_speed_handler, "IU",
-					    "Level 2 PWM speed (0-255)");
+					    &cooling_fan.fan_temp2_speed, 2, rpi5_sysctl_speed_handler, "IU",
+					    "PWM speed for temp2 <= T < temp3 (0-255)");
 					SYSCTL_ADD_PROC(&rpi5_sysctl_ctx, SYSCTL_CHILDREN(fan_tree),
 					    OID_AUTO, "speed3",
 					    CTLTYPE_UINT | CTLFLAG_RW | CTLFLAG_MPSAFE,
-					    &cooling_fan.fan_temp3_speed, 0, rpi5_sysctl_speed_handler, "IU",
-					    "Level 3 PWM speed (0-255)");
+					    &cooling_fan.fan_temp3_speed, 3, rpi5_sysctl_speed_handler, "IU",
+					    "PWM speed for T >= temp3 (0-255)");
 
 					/* Read-only status */
 					SYSCTL_ADD_PROC(&rpi5_sysctl_ctx, SYSCTL_CHILDREN(fan_tree),
@@ -1004,7 +1043,7 @@ rpi5_modevent(module_t mod, int event, void *data)
 					    CTLTYPE_UINT | CTLFLAG_RD | CTLFLAG_MPSAFE,
 					    NULL, 0, rpi5_sysctl_current_state_handler, "IU",
 					    "Current fan state (0-4)");
->>>>>>> f77e3acacb0f (arm64: add Raspberry Pi 5 cooling fan controller)
+					    "Current fan region (0-4); 0 = fan off");
 					SYSCTL_ADD_PROC(&rpi5_sysctl_ctx, SYSCTL_CHILDREN(fan_tree),
 					    OID_AUTO, "temp_min",
 					    CTLTYPE_UINT | CTLFLAG_RW |
