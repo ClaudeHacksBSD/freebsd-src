@@ -1130,6 +1130,16 @@ and
 .Pa /boot/pxeboot
 .Pp
 This option only has an effect on x86.
+.It Va WITHOUT_LOADER_RPIBOOT
+Do not build rpiboot, the loader the Raspberry Pi 5 firmware starts directly
+.Pp
+This is a default setting on
+amd64/amd64, arm/armv7, i386/i386, powerpc/powerpc64, powerpc/powerpc64le and riscv/riscv64.
+.It Va WITH_LOADER_RPIBOOT
+Build rpiboot, the loader the Raspberry Pi 5 firmware starts directly
+.Pp
+This is a default setting on
+arm64/aarch64.
 .It Va WITHOUT_LOADER_UBOOT
 Disable building of ubldr.
 .Pp
