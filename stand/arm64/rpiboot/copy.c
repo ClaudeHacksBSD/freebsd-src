@@ -58,17 +58,21 @@
  *	device tree	0x04000000 .. 0x04013834  (device_tree_address, and
  *					            the blob is 0x13834)
  *	loader heap	0x08000000 .. 0x0b000000
- *	staging		0x10000000 .. 0x18000000
+ *	staging		0x10000000 .. 0x30000000
+ *	initrd		0x30000000 ..             (config.txt "initramfs", see
+ *					            initrd.c)
  *
  * and the whole of it sits inside the first /memory region, 0x0 .. 0x3f400000,
- * which the firmware reports and the probe confirmed.  128 MiB is ample: the
- * RPI5-FDT kernel's segments span about 15.4 MiB, and modules and metadata go
- * after it.
+ * which the firmware reports and the probe confirmed.  The kernel needs about
+ * 16 MiB; the rest is for the live system's root, which initrd.c copies in
+ * behind the kernel as an mfs_root module.  512 MiB leaves room for the
+ * kernel, its modules and a root image as large as the 244 MiB that can sit
+ * between 0x30000000 and the end of the first /memory region.
  *
  * 2 MiB aligned because arm64 kernels expect to be loaded on a 2 MiB boundary.
  */
 #define	RPI_STAGING_BASE	0x10000000UL
-#define	RPI_STAGING_SIZE	(128UL * 1024 * 1024)
+#define	RPI_STAGING_SIZE	(512UL * 1024 * 1024)
 
 static vm_offset_t	stage_offset;
 static bool		stage_offset_set;
@@ -103,6 +107,26 @@ stage_check(vm_offset_t dest, size_t len)
 	}
 
 	return (0);
+}
+
+/*
+ * Would [va, va + len) fit in the window?  For callers that cannot rely on
+ * the copy failing loudly, which is anything going through file_addbuf().
+ * Before the first write the offset is not fixed, so nothing can be said.
+ */
+bool
+rpi_stage_fits(vm_offset_t va, size_t len)
+{
+	if (!stage_offset_set)
+		return (false);
+	return (va + stage_offset >= RPI_STAGING_BASE &&
+	    va + stage_offset + len <= RPI_STAGING_BASE + RPI_STAGING_SIZE);
+}
+
+vm_offset_t
+rpi_stage_end(void)
+{
+	return (RPI_STAGING_BASE + RPI_STAGING_SIZE);
 }
 
 /*

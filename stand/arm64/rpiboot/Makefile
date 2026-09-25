@@ -28,23 +28,24 @@ INSTALLFLAGS=	-b
 LOADER_INTERP?=	simp
 
 # Memory disk.  This is what gives the loader a filesystem without any
-# storage driver at all: stand/common/md.c reserves MD_IMAGE_SIZE bytes of
-# .data pre-filled with the marker string "MFS Filesystem goes here", and
-# sys/tools/embed_mfs.sh patches a real image over it after the link.  That
-# script has a non-ELF path using strings(1), so it works on the raw binary.
+# storage driver at all.  Normally the disk is the image the VPU firmware
+# loads from config.txt "initramfs" (see initrd.c), which stand/common/md.c
+# serves as md0: once initrd.c has registered it.
 LOADER_MD_SUPPORT=	yes
 #
-# 14 MiB, so the image can carry a stripped kernel.
+# Optionally, an image embedded in the loader itself, the bring-up path:
+# stand/common/md.c reserves MD_IMAGE_SIZE bytes of .data pre-filled with the
+# marker string "MFS Filesystem goes here", and sys/tools/embed_mfs.sh patches
+# a real image over it after the link.  Only built when an image is given,
+# because the reservation is carried by every loader built with it -- and an
+# arm64 world should not ship a 14 MiB loader of empty space.
 #
-# This is what lets the handoff be tested with one new variable instead of
-# two: the loader has no storage driver yet, so without an embedded kernel
-# there would be nothing to boot, and wiring the SD card at the same time
-# would leave a failure ambiguous between the two.  A 14 MiB image makes the
-# loader binary about 14.5 MiB, which the firmware loads at 0x200000 and which
-# still ends far below the device tree at 0x4000000.
+#	make MFS_IMAGE=/path/to/ufs.img [MD_IMAGE_SIZE=bytes]
 #
-# Must be a multiple of 512; stand/common/md.c #errors otherwise.
+# The size must be a multiple of 512; stand/common/md.c #errors otherwise.
+.if defined(MFS_IMAGE)
 MD_IMAGE_SIZE?=		14680064
+.endif
 
 # What this loader does and does not carry.  Network and ZFS are off because
 # there are no drivers for them here yet; MSDOS is on because the firmware
@@ -84,7 +85,7 @@ SRCS+=		cache.c
 
 # FDT comes from x0, so the platform contract is three small functions.
 .if ${MK_FDT} != "no"
-SRCS+=		rpi_fdt.c
+SRCS+=		rpi_fdt.c initrd.c
 CFLAGS+=	-I${FDTSRC} -I${BOOTOBJ}/fdt -DLOADER_FDT_SUPPORT
 LIBFDT=		${BOOTOBJ}/fdt/libfdt.a
 .endif

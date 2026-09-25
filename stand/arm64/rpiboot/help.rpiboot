@@ -9,7 +9,22 @@
 	The console is the SoC PL011 at 0x107d001000, which the firmware has
 	already configured to 115200 8N1 before entry.
 
-	md0: is a memory disk embedded in the loader image itself, so it is
-	available with no storage driver at all.
+	md0: is the image the firmware loaded with the config.txt line
+
+		initramfs <file> 0x30000000
+
+	so it is available with no storage driver at all.  The image must
+	start at or above the end of the staging window (0x30000000).
+
+################################################################################
+# Trpiboot_initrd_root DUse the initrd as the kernel's root
+
+	set rpiboot_initrd_root=YES
+
+	Copies md0: behind the kernel as an mfs_root module at boot, so the
+	kernel's md(4) attaches it as md0 and can mount it as root with
+	vfs.root.mountfrom="ufs:/dev/md0".  Used by the live and installer
+	image.  Left unset, the initrd only supplies the kernel and its
+	modules and root is found elsewhere, as on an installed system.
 
 ################################################################################

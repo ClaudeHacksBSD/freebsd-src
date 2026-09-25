@@ -15,6 +15,13 @@ void	*rpi_translate(vm_offset_t va);
 ssize_t	rpi_copyin(const void *src, vm_offset_t dest, const size_t len);
 ssize_t	rpi_copyout(const vm_offset_t src, void *dest, const size_t len);
 ssize_t	rpi_readin(readin_handle_t fd, vm_offset_t dest, const size_t len);
+bool	rpi_stage_fits(vm_offset_t va, size_t len);
+vm_offset_t rpi_stage_end(void);
+
+/* initrd.c -- the config.txt "initramfs" image as md0: and optionally root. */
+int	rpi_initrd_probe(const void *fdt, uint64_t reserved_end);
+bool	rpi_initrd_present(void);
+int	rpi_initrd_stage_root(void);
 
 /* devicename.c -- setcurrdev comes from the MI gen_setcurrdev(). */
 int	rpi_getdev(void **vdev, const char *devspec, const char **path);

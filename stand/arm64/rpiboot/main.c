@@ -194,9 +194,23 @@ main(void)
 	archsw.arch_autoload = rpi_autoload;
 
 	/*
-	 * Probe the device switch.  Today that is the embedded memory disk
-	 * and nothing else, which is the point: it needs no hardware driver,
-	 * so the loader has a filesystem before it has a disk.
+	 * The image the firmware loaded with config.txt "initramfs" becomes
+	 * md0: before anything else is probed, so it is the memory disk
+	 * currdev points at below.  Everything below the end of the staging
+	 * window belongs to this loader and the kernel it assembles, so the
+	 * initrd has to live above it; see initrd.c and copy.c.
+	 */
+#ifdef LOADER_FDT_SUPPORT
+	(void)rpi_initrd_probe((const void *)(uintptr_t)rpi_dtb_pa,
+	    rpi_stage_end());
+#endif
+
+	/*
+	 * Probe the device switch.  Today that is the memory disk and nothing
+	 * else, which is the point: it needs no hardware driver, so the
+	 * loader has a filesystem before it has a disk.  md_init() adds the
+	 * embedded image, if this loader was built with one, after the
+	 * initrd.
 	 */
 	for (i = 0; devsw[i] != NULL; i++) {
 		if (devsw[i]->dv_init == NULL)
@@ -216,6 +230,12 @@ main(void)
 	 * duplicated gen_setcurrdev() badly enough to break every path.
 	 */
 	set_currdev("md0:");
+#ifndef MD_IMAGE_SIZE
+	if (!rpi_initrd_present())
+		printf("\nNo initrd and no embedded image, so there is "
+		    "nothing to boot from.\n"
+		    "Check the \"initramfs\" line in config.txt.\n");
+#endif
 	setenv("LINES", "24", 1);
 
 	interact();			/* doesn't return */

@@ -17,9 +17,10 @@
  * Devices.
  *
  * Just the memory disk for now, and that is the point of it: md needs no
- * hardware driver, so the loader has a filesystem before it has a disk.  The
- * SDHCI block reader proven in rpi5_modules.git/loader/sdhci.c is the next
- * entry here.
+ * hardware driver, so the loader has a filesystem before it has a disk.  Its
+ * units are the firmware's initramfs image (initrd.c) and, if this loader
+ * was built with one, an embedded image.  An SDHCI block device is the
+ * obvious next entry.
  */
 struct devsw *devsw[] = {
 	&md_dev,

@@ -59,6 +59,17 @@ elf64_exec(struct preloaded_file *fp)
 	ehdr = (Elf_Ehdr *)&(md->md_data);
 
 	/*
+	 * Everything is loaded now, so this is the one point where the initrd
+	 * can be appended as the kernel's root without anything being placed
+	 * after it.  A failure here is fatal to this boot attempt rather than
+	 * something to carry on past: a kernel told to mount md0 with no md0
+	 * would only stop at mountroot, further from the cause.
+	 */
+	err = rpi_initrd_stage_root();
+	if (err != 0)
+		return (err);
+
+	/*
 	 * Close devices before the point of no return.  The EFI loader does
 	 * this because net_cleanup() stops working after ExitBootServices;
 	 * here it is simply good manners -- the memory disk and any future SD
