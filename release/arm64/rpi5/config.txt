@@ -1,0 +1,34 @@
+# FreeBSD on the Raspberry Pi 5, started directly by the VPU firmware.
+#
+# There is no U-Boot and no EFI firmware here.  The firmware loads the
+# FreeBSD loader as if it were a Linux kernel, and loads a UFS image
+# alongside it as the initial ramdisk; the loader boots the FreeBSD kernel
+# out of that image.  See rpiboot(8) and rpi5-bootimg(8).
+#
+# initramfs names the image and where it goes:
+#
+#	mfsroot.ufs	the live system and installer, which runs entirely
+#			from memory
+#	boot.ufs	an installed system's kernel, written by
+#			rpi5-bootimg(8); root is then on the SD card
+#	boot.ufs.old	the previous one, if a new kernel does not boot
+#
+# The address is not negotiable: rpiboot assembles the kernel in memory
+# below 0x30000000, and the image has to end below the top of the first
+# memory region, 0x3f400000.
+
+[pi5]
+arm_64bit=1
+kernel=rpiboot.bin
+os_check=0
+auto_initramfs=0
+initramfs mfsroot.ufs 0x30000000
+
+# rpiboot's heap starts at 0x8000000; the device tree must be below it.
+device_tree_address=0x4000000
+
+# The console is the PL011 on the three-pin debug connector, 115200 8N1.
+enable_uart=1
+uart_2ndstage=1
+
+[all]
