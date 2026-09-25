@@ -5,3 +5,6 @@ SUBDIR+=	acpi
 SUBDIR+=	bhyve
 SUBDIR+=	bhyvectl
 .endif
+.if ${MK_LOADER_RPIBOOT} != "no"
+SUBDIR+=	rpi5-bootimg
+.endif

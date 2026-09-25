@@ -1,0 +1,172 @@
+.\"-
+.\" SPDX-License-Identifier: BSD-2-Clause
+.\"
+.\" Copyright (c) 2026 Jeremy McMillan
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd September 25, 2026
+.Dt RPI5-BOOTIMG 8 arm64
+.Os
+.Sh NAME
+.Nm rpi5-bootimg
+.Nd rebuild the Raspberry Pi 5 kernel boot image
+.Sh SYNOPSIS
+.Nm
+.Op Fl cnqt
+.Op Fl b Ar bootdir
+.Op Fl r Ar root
+.Sh DESCRIPTION
+A Raspberry Pi 5 that boots
+.Fx
+without EFI is started by the VPU firmware, which reads
+.Pa config.txt
+from the FAT partition of the SD card.
+It loads the FreeBSD loader,
+.Pa rpiboot.bin ,
+as its
+.Dq kernel ,
+and a small UFS image named by the
+.Cm initramfs
+line as its initial ramdisk.
+The loader has no SD card driver of its own; it loads the
+.Fx
+kernel and any modules out of that image, and the kernel then mounts its
+root file system from the SD card.
+.Pp
+So the image on the FAT partition has to be rebuilt whenever
+.Pa /boot/kernel
+or
+.Pa /boot/loader.conf
+changes.
+.Nm
+does that: it copies
+.Pa /boot/kernel/kernel
+and each module named by a
+.Va *_load="YES"
+line in
+.Xr loader.conf 5
+into a new image, translates the remaining
+.Xr loader.conf 5
+variables into
+.Ic set
+commands for the loader's
+.Dq simp
+interpreter, takes the root file system from the
+.Pa /
+entry of
+.Xr fstab 5 ,
+and installs the result as
+.Pa boot.ufs .
+The previous image is kept as
+.Pa boot.ufs.old .
+.Pp
+When
+.Fx
+is installed from base system packages, a
+.Xr pkg 8
+trigger runs
+.Nm
+.Fl t
+after any package changes files under
+.Pa /boot/kernel .
+After
+.Dl make installkernel
+or
+.Xr freebsd-update 8 ,
+run
+.Nm
+by hand.
+.Pp
+The options are as follows:
+.Bl -tag -width "-b bootdir"
+.It Fl b Ar bootdir
+Where the FAT partition is mounted, relative to
+.Ar root .
+The default is
+.Pa /boot/efi .
+.It Fl c
+Also point the
+.Cm initramfs
+line in
+.Pa config.txt
+at
+.Pa boot.ufs ,
+adding one if there is none.
+Used once, by the installer, to switch a card from the live system to the
+installed one.
+.It Fl n
+Build the image and show the loader script it would carry, but install
+nothing.
+.It Fl q
+Report only errors and warnings.
+.It Fl r Ar root
+Operate on the system rooted at
+.Ar root
+instead of
+.Pa / .
+.It Fl t
+Trigger mode, for
+.Xr pkg 8 :
+quietly do nothing unless
+.Pa config.txt
+boots
+.Pa rpiboot.bin
+and its
+.Cm initramfs
+line already names
+.Pa boot.ufs .
+.El
+.Sh FILES
+.Bl -tag -width "/boot/efi/boot.ufs.old" -compact
+.It Pa /boot/efi/config.txt
+firmware configuration
+.It Pa /boot/efi/boot.ufs
+kernel boot image
+.It Pa /boot/efi/boot.ufs.old
+previous kernel boot image
+.El
+.Sh EXIT STATUS
+.Ex -std
+.Sh EXAMPLES
+If a new kernel does not boot, mount the FAT partition of the card on
+another machine and change the
+.Cm initramfs
+line of
+.Pa config.txt
+from
+.Pa boot.ufs
+to
+.Pa boot.ufs.old .
+.Sh SEE ALSO
+.Xr loader.conf 5 ,
+.Xr bsdinstall 8 ,
+.Xr loader_simp 8 ,
+.Xr makefs 8
+.Sh HISTORY
+The
+.Nm
+utility first appeared in
+.Fx 16.0 .
+.Sh BUGS
+The image has to start at or above 0x30000000 and end below the top of the
+first memory region, which limits it to 244 MiB.

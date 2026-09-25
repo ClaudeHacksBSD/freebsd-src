@@ -1,0 +1,16 @@
+path_glob: [
+	"/boot/kernel/*",
+]
+
+trigger: {
+	type: lua
+	sandbox: false
+	script: <<EOD
+	-- Only a Raspberry Pi 5 that boots its kernel through the firmware's
+	-- initramfs has anything to do here; rpi5-bootimg -t exits quietly
+	-- on every other system.
+	if pkg.stat("/usr/sbin/rpi5-bootimg") then
+		pkg.exec({"/usr/sbin/rpi5-bootimg", "-t"})
+	end
+EOD
+}
