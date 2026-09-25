@@ -29,6 +29,12 @@ local function select_packages(pkg, media, all_libcompats)
 		["FreeBSD-kernel-generic64"] = true,
 		["FreeBSD-kernel-generic64le"] = true,
 	}
+	-- Boards whose images carry a board kernel instead of GENERIC name
+	-- it here, e.g. PKGBASE_KERNEL=FreeBSD-kernel-rpi5-fdt-norp1.
+	local board_kernel = os.getenv("PKGBASE_KERNEL")
+	if board_kernel and board_kernel ~= "" then
+		kernel_packages = { [board_kernel] = true }
+	end
 
 	local components = {}
 	local rquery = capture(pkg .. "rquery -U -r FreeBSD-base %n")
@@ -60,6 +66,12 @@ local function select_packages(pkg, media, all_libcompats)
 		for compat in all_libcompats:gmatch("%S+") do
 			table.insert(selected, components["lib" .. compat])
 		end
+	elseif media == "small" then
+		-- Only what an install needs: small enough for an SD card
+		-- image that also has to carry the distribution sets.
+		table.insert(selected, components["pkg"])
+		table.insert(selected, components["base"])
+		table.insert(selected, components["kernel"])
 	else
 		assert(media == "dvd")
 		table.insert(selected, components["pkg"])
@@ -83,7 +95,7 @@ end
 local function main()
 	-- Determines package subset selected
 	local media = assert(arg[1])
-	assert(media == "disc" or media == "dvd")
+	assert(media == "disc" or media == "dvd" or media == "small")
 	-- Directory containing FreeBSD-base repository config
 	local repo_dir = assert(arg[2])
 	-- Directory to create new repository

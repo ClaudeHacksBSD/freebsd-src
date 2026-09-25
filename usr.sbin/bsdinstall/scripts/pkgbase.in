@@ -246,6 +246,12 @@ local function select_packages(pkg, options)
 		["FreeBSD-kernel-generic64"] = true,
 		["FreeBSD-kernel-generic64le"] = true,
 	}
+	-- Install media built around a board kernel instead of GENERIC
+	-- names it, e.g. BSDINSTALL_PKGBASE_KERNEL=FreeBSD-kernel-rpi5-fdt-norp1.
+	local board_kernel = os.getenv("BSDINSTALL_PKGBASE_KERNEL")
+	if board_kernel and board_kernel ~= "" then
+		kernel_packages = { [board_kernel] = true }
+	end
 
 	local rquery = capture(pkg .. "rquery -U -r FreeBSD-base %n")
 	for package in rquery:gmatch("[^\n]+") do

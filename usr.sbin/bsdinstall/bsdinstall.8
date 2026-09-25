@@ -29,7 +29,7 @@
 .\" ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
-.Dd May 12, 2026
+.Dd September 25, 2026
 .Dt BSDINSTALL 8
 .Os
 .Sh NAME
@@ -382,6 +382,17 @@ See
 .Sx REPOSITORY CONFIGURATION
 in
 .Xr pkg.conf 5 .
+Default: unset
+.It Ev BSDINSTALL_PKGBASE_KERNEL
+Name of the kernel package the
+.Cm pkgbase
+target installs, for install media built around a board kernel rather than
+.Cd GENERIC ,
+for example
+.Dq FreeBSD-kernel-rpi5-fdt-norp1 .
+When unset, the
+.Cd GENERIC
+kernel package for the platform is used.
 Default: unset
 .It Ev BSDINSTALL_CHROOT
 The directory into which the distribution files should be unpacked and the
