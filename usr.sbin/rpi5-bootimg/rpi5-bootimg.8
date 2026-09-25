@@ -42,7 +42,8 @@ without EFI is started by the VPU firmware, which reads
 .Pa config.txt
 from the FAT partition of the SD card.
 It loads the FreeBSD loader,
-.Pa rpiboot.bin ,
+.Xr loader.rpiboot 8
+.Pq Pa rpiboot.bin ,
 as its
 .Dq kernel ,
 and a small UFS image named by the
@@ -160,6 +161,7 @@ to
 .Sh SEE ALSO
 .Xr loader.conf 5 ,
 .Xr bsdinstall 8 ,
+.Xr loader.rpiboot 8 ,
 .Xr loader_simp 8 ,
 .Xr makefs 8
 .Sh HISTORY

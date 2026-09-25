@@ -1,0 +1,132 @@
+.\"
+.\" SPDX-License-Identifier: BSD-2-Clause
+.\"
+.\" Copyright (c) 2026 Jeremy McMillan
+.\"
+.Dd September 25, 2026
+.Dt LOADER.RPIBOOT 8 arm64
+.Os
+.Sh NAME
+.Nm loader.rpiboot
+.Nd Raspberry Pi 5 kernel loader
+.Sh DESCRIPTION
+.Nm
+is the
+.Fx
+loader for the Raspberry Pi 5, started directly by the board's VPU firmware
+with no U-Boot and no EFI firmware in the boot path.
+The firmware loads it from the FAT boot partition as though it were a Linux
+arm64 kernel, as named by the
+.Cm kernel
+line of
+.Pa config.txt ,
+and enters it at exception level 2 with the MMU off and the physical address
+of its device tree in register x0.
+There is no EFI memory map; memory comes from the
+.Pa /memory
+node of that tree, which the firmware fills in.
+.Pp
+The console is the SoC PL011 UART on the three-pin debug connector, at
+115200 baud, 8 data bits, no parity, 1 stop bit, as the firmware configured it.
+The interpreter is
+.Xr loader_simp 8 ,
+which runs the commands in
+.Pa /boot/loader.rc
+and does not read
+.Xr loader.conf 5 .
+.Ss The initrd
+.Nm
+has no storage driver.
+Its file system is the image the firmware loads into memory with the
+.Pa config.txt
+line
+.Bd -literal -offset indent
+initramfs <file> 0x30000000
+.Ed
+.Pp
+The firmware records where it put the image in the
+.Pa /chosen
+node's
+.Va linux,initrd-start
+and
+.Va linux,initrd-end
+properties, and
+.Nm
+serves it as
+.Li md0: ,
+the current device.
+It must be a bare UFS file system, such as
+.Xr makefs 8
+produces, and must start at or above 0x30000000, the end of the memory
+.Nm
+uses for itself and for assembling the kernel.
+It must also end below the top of the first memory region, 0x3f400000.
+.Pp
+The kernel and its modules are loaded from that image.
+Where the kernel's root file system is depends on
+.Va rpiboot_initrd_root :
+.Bl -tag -width "rpiboot_initrd_root"
+.It Va rpiboot_initrd_root
+When set to
+.Dq YES ,
+the whole image is copied behind the kernel as an
+.Dq mfs_root
+module just before the kernel is started, so
+.Xr md 4
+attaches it as
+.Pa md0
+and
+.Va vfs.root.mountfrom Ns = Ns Dq ufs:/dev/md0
+mounts it as root.
+The Raspberry Pi 5 live system and installer run this way.
+When unset, as on an installed system, the image carries only the kernel,
+and the kernel mounts its root from wherever
+.Va vfs.root.mountfrom
+says.
+.El
+.Pp
+An installed system's image is written by
+.Xr rpi5-bootimg 8 .
+.Ss Memory layout
+.Bl -tag -width "0x10000000-0x30000000" -compact
+.It 0x00200000
+.Nm
+itself
+.It 0x04000000
+device tree
+.Pq Cm device_tree_address
+.It 0x08000000
+loader heap, 48 MiB
+.It 0x10000000-0x30000000
+kernel, modules and root image as they are assembled
+.It 0x30000000
+initrd
+.El
+.Ss Commands
+In addition to the common loader commands,
+.Nm
+provides
+.Ic reboot
+and
+.Ic poweroff ,
+both through PSCI calls to the ARM Trusted Firmware.
+.Sh FILES
+.Bl -tag -width "/boot/rpiboot.bin" -compact
+.It Pa /boot/rpiboot.bin
+the loader, as installed; copied to the FAT boot partition
+.El
+.Sh SEE ALSO
+.Xr md 4 ,
+.Xr loader.conf 5 ,
+.Xr loader 8 ,
+.Xr loader_simp 8 ,
+.Xr rpi5-bootimg 8
+.Sh HISTORY
+.Nm
+first appeared in
+.Fx 16.0 .
+.Sh BUGS
+.Nm
+cannot read the SD card, so an installed system's kernel has to be copied
+into an image on the FAT partition after every change; see
+.Xr rpi5-bootimg 8 .

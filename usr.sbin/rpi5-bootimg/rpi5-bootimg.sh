@@ -30,9 +30,10 @@
 # rpi5-bootimg -- rebuild the boot image a Raspberry Pi 5 loads its kernel
 # from.
 #
-# On a Pi 5 booted by rpiboot(8) the VPU firmware, not the loader, reads the
-# SD card: config.txt names rpiboot.bin as the "kernel" and a small UFS image
-# as the "initramfs", and rpiboot loads the FreeBSD kernel out of that image.
+# On a Pi 5 booted by loader.rpiboot(8) the VPU firmware, not the loader,
+# reads the SD card: config.txt names rpiboot.bin as the "kernel" and a
+# small UFS image as the "initramfs", and rpiboot loads the FreeBSD kernel
+# out of that image.
 # So after every kernel change the image on the FAT partition has to be
 # regenerated from /boot, which is what this does.  See rpi5-bootimg(8).
 #
@@ -97,12 +98,13 @@ LOADERCONF=${ROOT}/boot/loader.conf
 # kernel, and only a Pi 5 whose config.txt already boots boot.ufs is ours
 # to touch.
 #
-if [ ! -f "${CFG}" ] || ! grep -q '^[[:space:]]*kernel=rpiboot\.bin' "${CFG}"; then
+if [ ! -f "${CFG}" ] ||
+    ! grep -q '^[[:space:]]*kernel=rpiboot\.bin' "${CFG}"; then
 	[ -n "${TRIGGER}" ] && exit 0
 	die "${CFG} does not boot rpiboot.bin; is ${BOOTDIR} mounted?"
 fi
-if [ -n "${TRIGGER}" ] &&
-    ! grep -q "^[[:space:]]*initramfs[[:space:]]\{1,\}${IMAGE}[[:space:]]" "${CFG}"; then
+INITRD_RE="^[[:space:]]*initramfs[[:space:]]\{1,\}${IMAGE}[[:space:]]"
+if [ -n "${TRIGGER}" ] && ! grep -q "${INITRD_RE}" "${CFG}"; then
 	exit 0
 fi
 

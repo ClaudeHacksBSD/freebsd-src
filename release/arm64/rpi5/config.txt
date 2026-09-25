@@ -3,7 +3,7 @@
 # There is no U-Boot and no EFI firmware here.  The firmware loads the
 # FreeBSD loader as if it were a Linux kernel, and loads a UFS image
 # alongside it as the initial ramdisk; the loader boots the FreeBSD kernel
-# out of that image.  See rpiboot(8) and rpi5-bootimg(8).
+# out of that image.  See loader.rpiboot(8) and rpi5-bootimg(8).
 #
 # initramfs names the image and where it goes:
 #
