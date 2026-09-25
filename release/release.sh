@@ -422,6 +422,15 @@ chroot_arm_build_release() {
 		TARGET=${EMBEDDED_TARGET} TARGET_ARCH=${EMBEDDED_TARGET_ARCH} \
 		-V OSRELEASE)"
 	chroot ${CHROOTDIR} mkdir -p ${DESTDIR}
+	# Boards whose image carries install media (distribution sets, an
+	# offline pkgbase repository) name the release targets that build
+	# them; they are built here, before the image is assembled.
+	if [ -n "${EMBEDDED_RELEASE_TARGETS}" ]; then
+		eval chroot ${CHROOTDIR} env WITH_UNIFIED_OBJDIR=1 \
+			${EMBEDDED_RELEASE_ENV} make ${MAKE_FLAGS} \
+			KERNCONF=${KERNEL} -C /usr/src/release \
+			${EMBEDDED_RELEASE_TARGETS}
+	fi
 	chroot ${CHROOTDIR} truncate -s ${IMAGE_SIZE} ${IMGBASE##${CHROOTDIR}}
 	export mddev=$(chroot ${CHROOTDIR} \
 		mdconfig -f ${IMGBASE##${CHROOTDIR}} ${MD_ARGS})

@@ -148,7 +148,7 @@ CLEANFILES+=	${I}.xz
 .if defined(WITH_DVD) && !empty(WITH_DVD)
 CLEANFILES+=	pkg-stage
 .endif
-CLEANDIRS=	dist pkgdb-dvd pkgdb-disc1 pkgbase-repo pkgbase-repo-dir ftp disc1 disc1-disc1 disc1-memstick bootonly bootonly-bootonly bootonly-memstick dvd pkgbase-repo.tar
+CLEANDIRS=	dist pkgdb-dvd pkgdb-disc1 pkgdb-small pkgbase-small pkgbase-repo pkgbase-repo-dir ftp disc1 disc1-disc1 disc1-memstick bootonly bootonly-bootonly bootonly-memstick dvd pkgbase-repo.tar
 beforeclean:
 	chflags -R noschg .
 .include <bsd.obj.mk>
@@ -227,6 +227,33 @@ pkgbase-repo-dir: pkgbase-repo
 	printf "FreeBSD-base: { url: "file://%s", enabled: yes }" \
 	    ${.OBJDIR}/pkgbase-repo/${PKG_ABI}/latest \
 	    > pkgbase-repo-dir/FreeBSD-base.conf
+
+# A reduced offline repository -- pkg, the base set and the kernel -- for
+# images that carry one beside other install media, such as the Raspberry
+# Pi 5 SD card image.  PKGBASE_KERNEL names a board kernel package in place
+# of GENERIC; see scripts/pkgbase-stage.lua.
+pkgbase-small: pkgbase-repo-dir
+	mkdir -p ${.TARGET}
+	env PKGBASE_KERNEL=${PKGBASE_KERNEL:Q} \
+	    ${.CURDIR}/scripts/pkgbase-stage.lua small \
+	    ${.OBJDIR}/pkgbase-repo-dir \
+	    ${.OBJDIR}/${.TARGET}/offline \
+	    "${_ALL_libcompats}" ${PKG_ABI} ${.OBJDIR}/pkgdb-small
+	touch ${.TARGET}
+
+# Install pkg(8) itself into PKG_ROOTDIR, from the pkgbase repository built
+# here, for install media assembled outside this Makefile: bsdinstall's
+# pkgbase target runs the host's pkg, and without it would try to bootstrap
+# one from the network.  The disc1 and bootonly targets do the same for
+# their own trees.
+pkg-into-root: pkgbase-repo-dir .PHONY
+.if !defined(PKG_ROOTDIR) || empty(PKG_ROOTDIR)
+	@echo "${.TARGET}: set PKG_ROOTDIR" >&2; false
+.endif
+	env ${PKG_ENV} ${PKG_CMD} -o ABI=${PKG_ABI} -r ${PKG_ROOTDIR} \
+	    ${PKGBASE_REPO_ARGS} install -f pkg
+	env ${PKG_ENV} ${PKG_CMD} -o ABI=${PKG_ABI} -r ${PKG_ROOTDIR} \
+	    ${PKGBASE_REPO_ARGS} clean -a
 
 disc1:
 # Install system
