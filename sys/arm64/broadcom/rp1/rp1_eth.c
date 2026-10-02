@@ -37,8 +37,8 @@
  *  - 64-bit descriptors (CGEM64) as upstream, but DMA limited to what RP1
  *    passes straight to PCIe (RP1ETH_DMA_MAXADDR), and the tags descend
  *    from RP1's bus DMA tag.
- *  - RX/TX are serviced from the interrupt task, with a callout at
- *    RP1ETH_POLL_HZ as a backstop where no GEM interrupt reaches the CPU.
+ *  - RX/TX are serviced from the interrupt task.  A callout at
+ *    RP1ETH_POLL_HZ is the backstop, and all there is under ACPI.
  *  - No miibus: link state polled from callout via direct MDIO reads;
  *    ifmedia set to 1000baseT-FDX (negotiated by rp1_eth_cfg.c).
  *  - RD4/WR4 use vm_offset_t KVA directly (no struct resource shim).

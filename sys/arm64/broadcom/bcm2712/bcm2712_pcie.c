@@ -23,8 +23,8 @@
  * RP1 vector (interrupts = <6 4>, level), which rp1pci delivers as RP1's
  * interrupt controller and acknowledges after the filter (IACK) -- by then
  * rp1_eth's filter has masked the GEM.  RP1's INTA, GIC SPI 229, is not
- * used: it never fires on an FDT boot.  The FDT is available for discovery
- * under ACPI too: machdep.c
+ * used on an FDT boot: it never fires there.  The FDT is available for
+ * discovery under ACPI too: machdep.c
  * installs and initialises OFW unconditionally, before bus_probe() picks a
  * bus method.
  *
