@@ -1169,8 +1169,7 @@ cyw_parent(struct ieee80211com *ic)
 
 			/* WLC_SET_INFRA=1 — commit BSS to STA/infrastructure mode.
 			 * Linux issues this from brcmf_cfg80211_change_iface() inside
-			 * brcmf_config_dongle(), always after C_UP.  This ordering
-			 * (UP then SET_INFRA) has not previously been tested. */
+			 * brcmf_config_dongle(), always after C_UP. */
 			if (cyw_fil_cmd_int_set(sc, WLC_SET_INFRA, 1) != 0)
 				device_printf(sc->dev,
 				    "cyw_parent: WLC_SET_INFRA failed\n");
@@ -1191,9 +1190,7 @@ cyw_parent(struct ieee80211com *ic)
 
 			/*
 			 * Preinit IOVARs after WLC_UP — mirror freebsd-brcmfmac
-			 * /src/cfg.c:1120-1153.  These were previously deferred
-			 * pending evidence; that evidence now exists in the form
-			 * of the working freebsd-brcmfmac driver on the same chip.
+			 * /src/cfg.c:1120-1153, which sets them on this chip.
 			 * All non-fatal — firmware may ignore some on 7.45.x.
 			 */
 			(void)cyw_fil_cmd_int_set(sc,

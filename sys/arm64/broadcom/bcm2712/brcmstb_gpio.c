@@ -9,10 +9,10 @@
  *
  * WHY THIS MATTERS ON A RASPBERRY PI 5
  *
- * Every GPIO FreeBSD could drive on this board so far was behind RP1, and so
- * behind PCIe.  But the board's own housekeeping pins are on the SoC, in two
- * of these controllers, and the firmware's device tree hangs real function
- * off them:
+ * Most of this board's GPIOs are in RP1, and so behind PCIe.  But the
+ * board's own housekeeping pins are on the SoC, in two of these
+ * controllers, and the firmware's device tree hangs real function off
+ * them:
  *
  *   gpio@7d508500  banks 32 + 4  WL_ON (28), BT_ON, the SDIO2 lines, ...
  *   gpio@7d517c00  banks 15 + 6  (always-on) RP1_RUN, SD_IOVDD_SEL,

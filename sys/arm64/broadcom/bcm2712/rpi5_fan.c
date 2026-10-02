@@ -158,8 +158,8 @@ static struct rpi5_cooling_fan cooling_fan = {
 	 * larger corrections.  A much wider hold band (14000) leaves the fan
 	 * latched at full speed on an idle board after a supervisor trip.  crit
 	 * sits below the 80 C throttle point so the supervisor acts before the
-	 * SoC clock-limits rather than in the same tick.  A 60 tick debounce on the
-	 * inadequate-cooling warning caught 95.6% of sustained under-cooled
+	 * SoC clock-limits rather than in the same tick.  A 60 tick debounce on
+	 * the inadequate-cooling warning caught 95.6% of sustained under-cooled
 	 * episodes at 0.39 false alarms per hour, against 1.41 at 15 ticks; the
 	 * warning is a log message, and emergencies belong to the supervisor.
 	 */

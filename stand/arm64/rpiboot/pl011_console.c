@@ -42,9 +42,9 @@ pl011_cons_probe(struct console *cp)
 	 *
 	 * Deliberately no hardware presence test.  The PrimeCell ID registers
 	 * sit at 0xfe0, outside this SoC's 0x200 reg window, so they read as
-	 * zero on a working UART -- an earlier version of the driver reported
-	 * "wrong address?" about a console that was printing the message.  The
-	 * device tree is authoritative for both address and identity.
+	 * zero on a working UART, and a test of them would report a fault on
+	 * the console that prints the report.  The device tree is
+	 * authoritative for both address and identity.
 	 */
 	pl011_attach(&sc, PL011_RPI5_BASE, PL011_RPI5_UARTCLK);
 	cp->c_flags |= C_PRESENTIN | C_PRESENTOUT;

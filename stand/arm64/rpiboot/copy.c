@@ -4,7 +4,7 @@
  * WHY A TRANSLATION IS NEEDED AT ALL
  *
  * A FreeBSD arm64 kernel's ELF declares virtual addresses in *both* p_vaddr
- * and p_paddr.  Measured on the RPI5-FDT kernel:
+ * and p_paddr.  For the RPI5 kernel:
  *
  *	Entry point:  0xffff000000000800
  *	LOAD  vaddr 0xffff000000000000  paddr 0xffff000000000000
