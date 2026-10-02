@@ -1,4 +1,7 @@
 SUBDIR=	distextract distfetch include partedit runconsoles scripts
+.if ${MACHINE_CPUARCH} == "aarch64"
+SUBDIR+=	rpi5
+.endif
 SUBDIR_PARALLEL=
 SUBDIR_DEPEND_distextract = include
 SUBDIR_DEPEND_distfetch = include
