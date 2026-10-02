@@ -8,11 +8,10 @@
  *
  * Hardware reference: RP-008370-DS-1 (RP1 datasheet)
  * Driver pattern:     sys/arm/broadcom/bcm2835/bcm2835_gpio.c
- * FDT spec:           RP1_GPIO_spec.md §3
  *
- * Attach strategy note (M1):
- *   The Pi 5 boots with ACPI, not FDT bus enumeration, so there is no
- *   simplebus in the device tree.  The driver registers under nexus and
+ * Attach strategy note:
+ *   Under ACPI there is no FDT bus enumeration, so no simplebus claims
+ *   the device tree's nodes.  The driver registers under nexus and
  *   uses device_identify to create its own device_t after locating the
  *   gpio@d0000 FDT node.  Registers are mapped via pmap_mapdev_attr,
  *   mirroring bcm2712.c and rp1_eth_cfg.c.
@@ -44,7 +43,7 @@
 
 /* -----------------------------------------------------------------------
  * Physical base addresses (CPU-side via BCM2712 PCIe2 outbound window)
- * Confirmed by live DTB gpio@d0000 reg entries — see RP1_GPIO_spec.md §3.1
+ * Confirmed by the firmware DTB's gpio@d0000 reg entries.
  * ----------------------------------------------------------------------- */
 #define RP1_IO_BANK_BASE_PHYS	0x1f000d0000UL	/* IO_BANK0..2, size 0xc000 */
 #define RP1_SYS_RIO_BASE_PHYS	0x1f000e0000UL	/* SYS_RIO0..2, size 0xc000 */
@@ -160,7 +159,7 @@ struct rp1_gpio_softc {
 
 /* -----------------------------------------------------------------------
  * Inline register accessors — KVA pointer style, matching rp1_eth_cfg.c
- * and bcm2712.c.  Used by rp1_gpio.c; shared with rp1_gpio_func.c (M2).
+ * and bcm2712.c.  Used by rp1_gpio.c.
  * ----------------------------------------------------------------------- */
 static inline uint32_t
 rp1_io_read(struct rp1_gpio_softc *sc, u_int pin)

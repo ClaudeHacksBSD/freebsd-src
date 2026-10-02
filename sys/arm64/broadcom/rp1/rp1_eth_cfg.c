@@ -4,18 +4,18 @@
  * Copyright (c) 2025 FreeBSD Contributors
  * All rights reserved.
  *
- * rp1_eth — Milestone 1: eth_cfg bring-up and link observation
+ * rp1_eth — eth_cfg bring-up and link observation
  *
- * This module performs the minimum work needed to observe RGMII link state
- * on the Raspberry Pi 5's on-board Cadence GEM_GXL Ethernet MAC without
- * touching the MAC DMA paths.  It validates:
+ * This file does what is needed to observe RGMII link state on the
+ * Raspberry Pi 5's on-board Cadence GEM_GXL Ethernet MAC without touching
+ * the MAC DMA paths.  It sets up and reports:
  *   - pcie2 outbound window MMIO mapping (eth_cfg at 0x1f_00104000)
  *   - FDT metadata extraction (MAC addr, phy-mode, PHY reset GPIO)
  *   - BCM PHY reset via GPIO 32 (active-low)
  *   - eth_cfg.STATUS.RGMII_LINK_STATUS toggling on cable plug/unplug
  *
- * Exit criteria: plug/unplug the Ethernet cable and observe
- *   sysctl hw.rp1_eth.cfg.status changing.
+ * To see it work, plug and unplug the Ethernet cable and watch
+ *   sysctl hw.rp1_eth.cfg.status change.
  *
  * rp1_eth.c forks if_cgem.c into the full network driver; this file handles
  * eth_cfg bring-up and PHY reset.
@@ -114,7 +114,7 @@ rp1_eth_fdt_find_compat(phandle_t start, const char *compat)
  *
  * Reads:
  *   local-mac-address  (6 bytes)
- *   phy-mode           (string, must equal "rgmii-id" for this milestone)
+ *   phy-mode           (string, must equal "rgmii-id")
  *   phy-handle         → lookup ethernet-phy child → read reg (MDIO addr)
  *   phy-reset-gpios    (phandle, gpio-num, flags)
  *   phy-reset-duration (u32, milliseconds — should be 5)
@@ -180,14 +180,14 @@ rp1_eth_fdt_read_metadata(struct rp1_eth_softc *sc)
 	}
 
 	/*
-	 * Milestone 1 only supports rgmii-id.
+	 * Only rgmii-id is supported.
 	 * rgmii-id means the BCM PHY applies both TX and RX delays internally.
 	 * We MUST NOT set CLKGEN.{TXCLKDELEN,RXCLKDELEN} — doing so would add
 	 * extra delay and cause CRC errors at 1 Gbps.
 	 */
 	if (strcmp(sc->phy_mode, RP1_ETH_PHY_MODE_RGMII_ID) != 0) {
 		printf("rp1_eth: phy-mode \"%s\" != \"%s\"; "
-		    "refusing attach (can be relaxed in milestone 2)\n",
+		    "refusing attach\n",
 		    sc->phy_mode, RP1_ETH_PHY_MODE_RGMII_ID);
 		return (ENXIO);
 	}
@@ -479,10 +479,9 @@ rp1_eth_cfg_status_fmt_sysctl(SYSCTL_HANDLER_ARGS)
 /* -----------------------------------------------------------------------
  * Set-up: everything from the FDT walk to the network interface.
  *
- * Run at MOD_LOAD on the ACPI lane.  On the FDT lane RP1 is a PCI device and
- * its registers cannot be found until rp1pci has published BAR1, which
- * happens at SI_SUB_CONFIGURE, after MOD_LOAD; the set-up is deferred until
- * then (rpi5_modules.git doc/M2_PCIE_HOST.md, phase 2).
+ * Run at MOD_LOAD under ACPI.  On an FDT boot RP1 is a PCI device and its
+ * registers cannot be found until rp1pci has published BAR1, which happens
+ * at SI_SUB_CONFIGURE, after MOD_LOAD; the set-up is deferred until then.
  * ----------------------------------------------------------------------- */
 static int
 rp1_eth_load(void)
@@ -762,9 +761,6 @@ rp1_eth_load(void)
 
 		/*
 		 * Step 3: Build sysctl tree hw.rp1_eth.*
-		 *
-		 * Note: in Milestone 2 this moves under dev.rp1_eth.0.* once
-		 * a synthesized device_t is available.
 		 */
 		tree = SYSCTL_ADD_NODE(&sc->sysctl_ctx,
 		    SYSCTL_STATIC_CHILDREN(_hw),
@@ -1363,18 +1359,18 @@ rp1_eth_load(void)
 			    MAC_RD4(sc, GEM_NET_CTRL));
 		}
 
-		/* Store global reference before M2 attach. */
+		/* Store global reference before the network attach. */
 		rp1_eth_sc = sc;
 
-		printf("rp1_eth: Milestone 1 ready — "
-		    "check hw.rp1_eth.cfg.status_decoded\n");
+		printf("rp1_eth: eth_cfg ready: "
+		    "see hw.rp1_eth.cfg.status_decoded\n");
 		printf("rp1_eth: eth_cfg.STATUS = 0x%08x\n",
 		    CFG_RD4(sc, ETH_CFG_STATUS));
 
-		/* Milestone 2: attach Cadence GEM to the network stack. */
+		/* Attach the Cadence GEM to the network stack. */
 		if (rp1eth_attach(sc) != 0)
-			printf("rp1_eth: Milestone 2 attach failed "
-			    "(M1 diagnostics still available)\n");
+			printf("rp1_eth: network attach failed "
+			    "(hw.rp1_eth diagnostics still available)\n");
 	}
 	return (0);
 }
@@ -1413,7 +1409,7 @@ rp1_eth_modevent(module_t mod __unused, int event, void *arg __unused)
 		if (sc == NULL)
 			break;
 
-		/* Milestone 2: detach network interface first. */
+		/* Detach the network interface first. */
 		rp1eth_detach();
 
 		rp1_eth_sc = NULL;

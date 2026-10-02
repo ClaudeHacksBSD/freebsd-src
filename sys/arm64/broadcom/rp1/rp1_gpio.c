@@ -6,22 +6,21 @@
  *
  * rp1_gpio — RP1 GPIO / Pinctrl Controller
  *
- * Milestone 1: device_identify probe, pmap_mapdev_attr register mapping,
- * gpio-line-names population, full gpio_if(9) implementation
- * (pin_get/set/toggle/flags/caps/name), fdt_pinctrl stub.
+ * Implemented: device_identify probe, pmap_mapdev_attr register mapping,
+ * gpio-line-names population, and gpio_if(9)
+ * (pin_get/set/toggle/flags/caps/name).
  *
- * Milestone 2: rp1_gpio_func.c function table + fdt_pinctrl configure_pins.
- * Milestone 3: PADS pull / drive-strength / schmitt in pin_setflags.
- * Milestone 4: pic_if per-pin edge/level interrupts.
+ * Not implemented: pin function selection through fdt_pinctrl
+ * (configure_pins is a stub), PADS pull / drive-strength / schmitt in
+ * pin_setflags, and per-pin edge/level interrupts (pic_if).
  *
- * Attach strategy (M1 finding):
- *   The Pi 5 boots with ACPI; no simplebus enumerates FDT children.
+ * Attach strategy:
+ *   Under ACPI no simplebus enumerates FDT children.
  *   DRIVER_MODULE(nexus) + device_identify walks the FDT directly, creates
  *   a synthetic device_t, and maps registers via pmap_mapdev_attr — the
- *   same pattern used by bcm2712.c and rp1_eth_cfg.c in this repo.
- *   IRQ chain validation is deferred to M4; the ACPI-booted system will
- *   require a different interrupt delivery path than the FDT chain assumed
- *   in the original plan (see RP1_GPIO_spec.md §9.4).
+ *   same pattern used by bcm2712.c and rp1_eth_cfg.c.
+ *   Per-pin interrupts under ACPI need a different delivery path than the
+ *   FDT interrupt chain.
  *
  * Pattern: sys/arm/broadcom/bcm2835/bcm2835_gpio.c
  * Hardware: RP-008370-DS-1 §3 (IO_BANK, SYS_RIO, PADS_BANK)
@@ -119,12 +118,12 @@ rp1_gpio_parse_pin_names(struct rp1_gpio_softc *sc, phandle_t node)
 static int rp1_gpio_detach(device_t dev);	/* forward declaration */
 
 /*
- * identify: called by nexus, and on the FDT lane by rp1pci, the RP1 PCI
+ * identify: called by nexus, and on an FDT boot by rp1pci, the RP1 PCI
  * driver.  Creates a device_t if the gpio@d0000 FDT node is present and no
  * instance already exists.  Under ACPI, EDK2 has placed RP1 and this
  * attaches to nexus as it always has; on an FDT boot RP1's registers
  * cannot be found until rp1pci has published BAR1, so it attaches below
- * rp1pci instead (M2 phase 2, rpi5_modules.git doc/M2_PCIE_HOST.md).
+ * rp1pci instead.
  */
 static void
 rp1_gpio_identify(driver_t *driver, device_t parent)
@@ -218,15 +217,15 @@ rp1_gpio_attach(device_t dev)
 	mtx_init(&sc->sc_mtx, "rp1gpio", NULL, MTX_SPIN);
 
 	/*
-	 * M1 task 4 finding: this system is ACPI-booted; no FDT bus framework
-	 * routes IRQs through the RP1 interrupt-controller node.  IRQ chain
-	 * validation and per-pin interrupt delivery are deferred to M4, which
-	 * will need a delivery path consistent with the ACPI device model
-	 * (similar to bcm2712_pcie.c's approach for the GEM IRQ).
+	 * Under ACPI no FDT bus framework routes IRQs through the RP1
+	 * interrupt-controller node.  Per-pin interrupt delivery is not
+	 * implemented; there it needs a delivery path consistent with the
+	 * ACPI device model (similar to bcm2712_pcie.c's approach for the
+	 * GEM IRQ).
 	 */
 	device_printf(dev,
 	    "IO_BANK@%p RIO@%p PADS@%p phys 0x%lx/0x%lx/0x%lx (%s) "
-	    "(IRQ chain: deferred to M4)\n",
+	    "(no pin interrupts)\n",
 	    sc->sc_io_kva, sc->sc_rio_kva, sc->sc_pad_kva,
 	    (unsigned long)io_phys, (unsigned long)rio_phys,
 	    (unsigned long)pad_phys,
@@ -258,8 +257,8 @@ rp1_gpio_attach(device_t dev)
 	/*
 	 * fdt_pinctrl registration requires ofw_bus_get_node(dev) to return a
 	 * valid phandle.  For a synthetic nexus device that has no OFW bus
-	 * ivars, this returns -1 and registration silently fails.  Defer to M2
-	 * where the FDT/device-framework integration will be resolved.
+	 * ivars, this returns -1 and registration silently fails, so it is
+	 * not attempted.
 	 */
 
 	/*
@@ -379,7 +378,7 @@ rp1_gpio_pin_getflags(device_t dev, uint32_t pin, uint32_t *flags)
 /*
  * Switch a pin to software GPIO mode (FUNCSEL=5) and set its direction.
  * OUTOVER and OEOVER are cleared to PERI so the RIO block drives the pad.
- * Pull-up/pull-down flags are accepted but deferred to M3 (PADS writes).
+ * Pull-up/pull-down flags are accepted but not applied (no PADS writes).
  * IE is set in PADS so IN_SYNC reflects the pad voltage in both directions.
  */
 static int
@@ -501,10 +500,9 @@ rp1_gpio_map_gpios(device_t bus, phandle_t dev __unused,
 }
 
 /* -----------------------------------------------------------------------
- * fdt_pinctrl_if method — no-op in M1; M2 installs the function table.
- * fdt_pinctrl_register is skipped here because ofw_bus_get_node(dev)
- * returns -1 for this synthetic nexus device.  M2 will resolve the
- * FDT/device-framework integration.
+ * fdt_pinctrl_if method — a stub: there is no function table.
+ * fdt_pinctrl_register is skipped because ofw_bus_get_node(dev)
+ * returns -1 for this synthetic nexus device.
  * ----------------------------------------------------------------------- */
 static int
 rp1_gpio_configure_pins(device_t dev __unused, phandle_t cfgxref __unused)
@@ -542,7 +540,7 @@ static device_method_t rp1_gpio_methods[] = {
 	DEVMETHOD(gpio_pin_toggle,		rp1_gpio_pin_toggle),
 	DEVMETHOD(gpio_map_gpios,		rp1_gpio_map_gpios),
 
-	/* fdt_pinctrl_if — configure_pins is a no-op in M1 */
+	/* fdt_pinctrl_if — configure_pins is a stub */
 	DEVMETHOD(fdt_pinctrl_configure,	rp1_gpio_configure_pins),
 
 	DEVMETHOD_END

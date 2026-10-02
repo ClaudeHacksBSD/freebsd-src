@@ -27,20 +27,20 @@
  */
 
 /*
- * Milestone 2: Cadence GEM_GXL driver for the RP1 southbridge on
- * Raspberry Pi 5, attached via pmap_mapdev (no PCIe bus driver).
+ * Cadence GEM_GXL driver for the RP1 southbridge on Raspberry Pi 5,
+ * with its registers mapped by pmap_mapdev rather than as bus resources.
  *
  * Forked from sys/dev/cadence/if_cgem.c.
  * Changes from the original:
  *  - FDT/OFW/clock probe+attach frontend removed; replaced by rp1eth_attach()
- *    called from rp1_eth_cfg.c MOD_LOAD after M1 hardware setup.
+ *    called from rp1_eth_cfg.c once the eth_cfg block and the PHY are set up.
  *  - 64-bit descriptors (CGEM64) as upstream, but DMA limited to what RP1
  *    passes straight to PCIe (RP1ETH_DMA_MAXADDR), and the tags descend
  *    from RP1's bus DMA tag.
- *  - No interrupts (polled): all GEM interrupts masked; RX/TX serviced from
- *    a callout at RP1ETH_POLL_HZ.  ISR body kept for Milestone 3.
+ *  - RX/TX are serviced from the interrupt task, with a callout at
+ *    RP1ETH_POLL_HZ as a backstop where no GEM interrupt reaches the CPU.
  *  - No miibus: link state polled from callout via direct MDIO reads;
- *    ifmedia set to 1000baseT-FDX (negotiated in M1).
+ *    ifmedia set to 1000baseT-FDX (negotiated by rp1_eth_cfg.c).
  *  - RD4/WR4 use vm_offset_t KVA directly (no struct resource shim).
  */
 
@@ -119,8 +119,8 @@
 #define TX_MAX_DMA_SEGS		8
 
 /*
- * Poll interval: 200 Hz → 5 ms.  Effective throughput is limited until
- * Milestone 3 adds real interrupts.
+ * Poll interval: 200 Hz → 5 ms.  Where the poll is the only mechanism it
+ * limits throughput.
  */
 #define RP1ETH_POLL_HZ		200
 
@@ -152,7 +152,7 @@ struct rp1eth_softc {
 
 	int			poll_tick;
 
-	/* Interrupt-driven RX/TX (Milestone 3). */
+	/* Interrupt-driven RX/TX. */
 	struct task		intr_task;
 	uint32_t		intr_pending;
 
@@ -395,7 +395,7 @@ cgem_null_qs(struct rp1eth_softc *sc)
 
 /* -----------------------------------------------------------------------
  * Descriptor ring setup — adapted from cgem:
- *   • parent DMA tag = RP1's (bcm2712_rp1_dma_tag()), NULL on the ACPI lane
+ *   • parent DMA tag = RP1's (bcm2712_rp1_dma_tag()), NULL under ACPI
  *   • lowaddr = RP1ETH_DMA_MAXADDR
  *   • neednullqs always set (GEM_GXL has priority queues)
  * ----------------------------------------------------------------------- */
@@ -414,9 +414,9 @@ cgem_setup_descs(struct rp1eth_softc *sc)
 	sc->rxring = NULL;
 
 	/*
-	 * Descriptor DMA tag.  On the FDT lane the parent is RP1's bus DMA
-	 * tag, and through it the host bridge's (see bcm2712_pcib.c).  On
-	 * the ACPI lane there is none, and NULL is used as before.
+	 * Descriptor DMA tag.  On an FDT boot the parent is RP1's bus DMA
+	 * tag, and through it the host bridge's (see bcm2712_pcib.c).
+	 * Under ACPI there is none, and NULL is used.
 	 */
 	err = bus_dma_tag_create(bcm2712_rp1_dma_tag(), 1,
 #ifdef CGEM64
@@ -974,7 +974,7 @@ printf("rp1_eth: CLKGEN updated to %dM: 0x%08x\n",
 
 /* -----------------------------------------------------------------------
  * Link-poll tick — fires at 1 Hz with sc_mtx held.
- * RX/TX are now interrupt-driven via cgem_intr_task (Milestone 3).
+ * RX/TX are interrupt-driven via cgem_intr_task.
  * ----------------------------------------------------------------------- */
 static void
 rp1eth_tick(void *arg)
@@ -1020,8 +1020,7 @@ reschedule:
  * interrupt when they are re-enabled; Linux macb_rx_poll() says so and
  * checks the ring after re-enabling, and so does cgem_intr_task().  Without
  * the check a full receive ring stalls for good: the GEM then reports only
- * RX_USED_READ, and refilling needs frames handed back first (M2 phase 4b,
- * rpi5_modules.git doc/M2_PCIE_HOST.md).
+ * RX_USED_READ, and refilling needs frames handed back first.
  */
 static bool
 cgem_work_pending(struct rp1eth_softc *sc)
@@ -1151,12 +1150,12 @@ cgem_intr_task(void *arg, int pending __unused)
 	}
 
 	/*
-	 * Re-arm the 5ms fallback poll.  On the FDT lane since M2 phase 4b
-	 * the GEM has its own RP1 MSI-X vector, which rp1pci acknowledges
-	 * after cgem_intr_filter, so a source still pending when INTR_EN is
+	 * Re-arm the 5ms fallback poll.  On an FDT boot the GEM has its own
+	 * RP1 MSI-X vector, which rp1pci acknowledges after
+	 * cgem_intr_filter, so a source still pending when INTR_EN is
 	 * written above raises a new interrupt and the poll is only a
-	 * backstop.  Before that, and on the ACPI lane, no GEM interrupt
-	 * reached the CPU and the poll was the only mechanism.  Arm
+	 * backstop.  Under ACPI no GEM interrupt reaches the CPU and the
+	 * poll is the only mechanism.  Arm
 	 * unconditionally; cgem_intr_filter cancels it if a real interrupt
 	 * fires first.
 	 */
@@ -1207,7 +1206,7 @@ cgem_reset(struct rp1eth_softc *sc)
 
 /* -----------------------------------------------------------------------
  * Config — adapted from cgem:
- *   • hardcoded 1G full duplex (negotiated in M1)
+ *   • hardcoded 1G full duplex (negotiated by rp1_eth_cfg.c)
  *   • no SGMII path
  *   • interrupts stay disabled (polled mode)
  * ----------------------------------------------------------------------- */
@@ -1460,7 +1459,7 @@ cgem_ioctl(if_t ifp, u_long cmd, caddr_t data)
 static int
 rp1eth_ifmedia_upd(if_t ifp)
 {
-	/* Media is hardcoded to whatever M1 autoneg resolved. */
+	/* Media is hardcoded to what autonegotiation resolved. */
 	return (0);
 }
 
@@ -1536,7 +1535,7 @@ rp1eth_add_sysctls(struct rp1eth_softc *sc, struct sysctl_oid *parent)
 }
 
 /* -----------------------------------------------------------------------
- * Attach — called from rp1_eth_cfg.c:MOD_LOAD after M1 hardware setup.
+ * Attach — called from rp1_eth_cfg.c after its hardware setup.
  * ----------------------------------------------------------------------- */
 int
 rp1eth_attach(struct rp1_eth_softc *cfg_sc)
@@ -1602,7 +1601,7 @@ sc->cfg_kva = (vm_offset_t)cfg_sc->cfg_kva;
 	if_setcapenable(ifp, if_getcapabilities(ifp));
 	sc->if_old_flags = if_getflags(ifp);
 
-	/* ifmedia: fixed 1G FDX (M1 autoneg result). */
+	/* ifmedia: fixed 1G FDX (the autonegotiation result). */
 	ifmedia_init(&sc->ifmedia, 0, rp1eth_ifmedia_upd, rp1eth_ifmedia_sts);
 	ifmedia_add(&sc->ifmedia, IFM_ETHER | IFM_1000_T | IFM_FDX, 0, NULL);
 	ifmedia_add(&sc->ifmedia, IFM_ETHER | IFM_100_TX | IFM_FDX, 0, NULL);
@@ -1619,7 +1618,7 @@ sc->cfg_kva = (vm_offset_t)cfg_sc->cfg_kva;
 	rp1eth_add_sysctls(sc, cfg_sc->sysctl_tree);
 
 	rp1eth_mac_sc = sc;
-	printf("rp1_eth: Milestone 3 attached — interrupt-driven, ifconfig rp1eth0\n");
+	printf("rp1_eth: attached, interrupt-driven: rp1eth0\n");
 	return (0);
 
 fail_descs:

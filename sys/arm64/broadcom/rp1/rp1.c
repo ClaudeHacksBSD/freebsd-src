@@ -5,19 +5,19 @@
  *
  * rp1 -- the Raspberry Pi RP1 south bridge as a PCI device.
  *
- * On the FDT lane, RP1 (1de4:0001) is enumerated behind bcm2712_pcib, and
+ * On an FDT boot, RP1 (1de4:0001) is enumerated behind bcm2712_pcib, and
  * PCI places its BARs.  RP1's peripherals -- GPIO, PWM, clocks, Ethernet
  * and the rest -- are in BAR1, which does not land where the device tree's
  * rp1 ranges assume (PCIe 0).  This driver owns BAR1, enables bus mastering
  * so that RP1's DMA masters can reach RAM, and publishes BAR1 to the RP1
  * drivers through bcm2712_rp1_publish().  Drivers that were waiting for RP1
- * run then (rpi5_modules.git doc/M2_PCIE_HOST.md, phase 2).
+ * run then.
  *
  * Linux drivers/mfd/rp1.c also maps BAR1 (pci_resource_start(pdev, 1)) and
  * is the parent of RP1's functions.  Here the function drivers still find
  * their registers through bcm2712_fdt.h, but those that are newbus drivers
- * attach below rp1pci on the FDT lane (their identify methods pick nexus
- * or rp1pci by lane), so that they come up after BAR1 is published.
+ * attach below rp1pci on an FDT boot (their identify methods pick nexus
+ * or rp1pci by bus method), so that they come up after BAR1 is published.
  *
  * It is also RP1's interrupt controller, as Linux drivers/mfd/rp1.c is.
  * Every RP1 peripheral interrupt is one of RP1's 61 MSI-X vectors: the DT
@@ -31,8 +31,7 @@
  * level-triggered source IACK_EN holds further messages until software
  * writes IACK -- after the handler, as Linux's rp1_chained_handle_irq()
  * does.  A handler must therefore have quieted its source by then
- * (rp1_eth's filter masks the GEM).  rpi5_modules.git doc/M2_PCIE_HOST.md,
- * phase 4b.
+ * (rp1_eth's filter masks the GEM).
  *
  * And it is the parent of the RP1 functions that stock FreeBSD FDT
  * drivers can run, through a simplebus over the rp1 node (rp1_simplebus,
@@ -40,10 +39,10 @@
  * translates them to where PCI put BAR1, and this driver sub-allocates
  * BAR1 for those children.  Only whitelisted compatibles get a child
  * (rp1_ofw_compat), so no stock driver takes a function one of ours
- * drives.  First: RP1's two xHCI controllers, snps,dwc3 (phase 4c).
+ * drives.  The whitelist holds RP1's two xHCI controllers, snps,dwc3.
  *
- * On the ACPI lane EDK2 does not expose RP1 as a PCI device, so this
- * driver never attaches there.
+ * Under ACPI, EDK2 does not expose RP1 as a PCI device, so this driver
+ * never attaches.
  */
 
 #include <sys/param.h>
@@ -596,7 +595,7 @@ rp1_attach(device_t dev)
 	 * RP1's system PLL and clock, as found (Linux clk-rp1.c offsets).
 	 * Our RP1 drivers assume what the firmware set up (sys 200 MHz);
 	 * Linux reprograms it from the DT.  Logged to compare an adopted
-	 * link with one brought up from reset (M2 phase 5).
+	 * link with one brought up from reset.
 	 */
 	device_printf(dev, "clocks as found: PLL_SYS CS=%#x PWR=%#x "
 	    "FBDIV=%u.%#x PRIM=%#x SEC=%#x; CLK_SYS CTRL=%#x DIV=%#x "

@@ -4,7 +4,7 @@
  * Copyright (c) 2025 FreeBSD Contributors
  * All rights reserved.
  *
- * rp1_pcie2_recon — Milestone 3 reconnaissance
+ * rp1_pcie2_recon — PCIe2 host controller diagnostics
  *
  * Maps the BCM2712 PCIe2 host controller (the one connecting BCM2712 to RP1)
  * and dumps its firmware-left state to dmesg + sysctls.  Answers the question:
