@@ -1,0 +1,36 @@
+# FreeBSD on the Raspberry Pi 5.
+#
+# The firmware loads rpiboot.bin, the FreeBSD loader, as its kernel image
+# at 0x200000 and enters it with the device tree's address.  There is no
+# U-Boot and no EFI.  The loader reads loader.env beside this file, and
+# then loader.conf and the kernel from the file system that names; see
+# loader.rpiboot(8).
+
+# Force 32 bpp framebuffer allocation.
+framebuffer_depth=32
+
+# Disable compensation for displays with overscan.
+disable_overscan=1
+
+# Full USB current whatever the power supply reports.  Remove this line if
+# the supply is not a 5 A one and the board browns out with USB devices.
+usb_max_current_enable=1
+
+# Do not pin the CPU at its maximum clock: nothing controls the fan until
+# the kernel is up.
+force_turbo=0
+
+# The device tree must be clear of the kernel image, which is about 21 MB
+# from 0x200000.
+device_tree_address=0x4000000
+device_tree_end=0x4100000
+kernel=rpiboot.bin
+os_check=0
+
+# Leave the PCIe link to RP1 trained at hand-off.  The loader's USB
+# keyboard needs it; the kernel resets the link and brings it up itself.
+pciex4_reset=0
+
+# Device-tree overlays the FreeBSD PCIe host driver needs.
+dtoverlay=bcm2712-rpi5-pcie2
+dtoverlay=bcm2712-rpi5-pcie1

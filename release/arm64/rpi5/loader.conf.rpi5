@@ -1,0 +1,34 @@
+# Raspberry Pi 5 board settings for loader.conf on the card's freebsd-boot
+# partition.
+#
+# This file is not read by the loader.  The card's /boot/loader.conf starts
+# with a copy of it, followed by the installer's or the installed system's
+# own settings, which therefore win.  The installer's post-install step
+# builds loader.conf from it again at each install.
+
+# Serial first, HDMI second, for the loader and the kernel.
+boot_serial="YES"
+boot_multicons="YES"
+
+# Nothing controls the fan while the loader's menu is up.
+autoboot_delay="3"
+
+# A root on USB or NVMe may attach after the kernel reaches root mount.
+vfs.mountroot.timeout="30"
+
+# cyw43455 firmware, preloaded because cyw attaches before root is mounted.
+cyw43455_bin_load="YES"
+cyw43455_bin_type="firmware"
+cyw43455_bin_name="/boot/firmware/cyw43455/brcmfmac43455-sdio.bin"
+cyw43455_txt_load="YES"
+cyw43455_txt_type="firmware"
+cyw43455_txt_name="/boot/firmware/cyw43455/brcmfmac43455-sdio.txt"
+cyw43455_clm_load="YES"
+cyw43455_clm_type="firmware"
+cyw43455_clm_name="/boot/firmware/cyw43455/brcmfmac43455-sdio.clm_blob"
+
+# WiFi SDIO runs 4-bit at 50 MHz, not 1-bit at 400 kHz.
+hw.sdiob.bus_setup="1"
+
+# /etc/hostid is on the root, which the loader does not read.
+hostuuid_load="NO"
