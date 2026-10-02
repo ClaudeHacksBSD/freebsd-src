@@ -10,10 +10,10 @@
  * WHY IT IS NEEDED
  *
  * The WiFi chip's SDIO bus is on gpio30..35, which must be muxed to the
- * "sd2" function for mmc@1100000 to reach it.  EDK2 does that on the ACPI
- * lane.  On an FDT boot nothing does: measured with the loader's peek before
- * any kernel ran, mux words 2 and 3 both read 0, i.e. every one of those pins
- * was still plain GPIO, with pull-downs on all of them.  So even a powered
+ * "sd2" function for mmc@1100000 to reach it.  EDK2 does that for an ACPI
+ * boot.  On an FDT boot nothing does: as the firmware leaves them, before
+ * any kernel runs, mux words 2 and 3 both read 0, i.e. every one of those
+ * pins is still plain GPIO, with pull-downs on all of them.  So even a powered
  * chip would be unreachable.  The device tree says what is wanted --
  * sdio2_30_pins: sd2 on 30..35, no pull on the clock, pull-up on CMD and
  * DAT0..3 -- and consumers apply it through fdt_pinctrl(4).
@@ -36,7 +36,7 @@
  *
  * Nothing here is applied at attach.  There is no fdt_pinctrl_configure_tree()
  * call: that would apply every enabled node's pinctrl-0, including devices
- * nothing on this lane drives.  Consumers ask for their own configuration.
+ * nothing drives on an FDT boot.  Consumers ask for their own configuration.
  */
 
 #include <sys/param.h>

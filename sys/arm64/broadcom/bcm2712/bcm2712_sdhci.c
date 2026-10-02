@@ -55,13 +55,12 @@
  * POWER AND PINS
  *
  * pinctrl-0 is applied and vmmc-supply is enabled before the slot starts
- * looking for a card.  An earlier version of this file ignored both, on the
- * assumption that the firmware had muxed the pins and that the supplies were
- * always-on.  That holds for the microSD slot and is false for the SDIO slot.
- * The loader's peek, before any kernel ran, found gpio30..35 still muxed as
- * plain GPIO, and WL_ON -- the GPIO behind wl-on-reg, mmc@1100000's
- * vmmc-supply -- an input reading 0.  So the WiFi chip had no power and no
- * bus.  Both are now done here, as Linux does in its mmc core.
+ * looking for a card.  Both are needed.  The firmware muxes the pins and
+ * leaves the supplies on for the microSD slot, but not for the SDIO slot:
+ * as the firmware leaves them, gpio30..35 are still muxed as plain GPIO,
+ * and WL_ON -- the GPIO behind wl-on-reg, mmc@1100000's vmmc-supply -- is
+ * an input reading 0, so the WiFi chip has no power and no bus.  Linux does
+ * both in its mmc core.
  *
  * Holding vmmc-supply matters for the microSD slot too, for a different
  * reason.  Its supply, sd-vcc-reg, is regulator-boot-on but not always-on.

@@ -189,13 +189,13 @@ uint32_t bcm2712_read_fan_rpm(void);
 /*
  * RP1's peripheral window.
  *
- * On the ACPI lane EDK2 places RP1 where the device tree's RP1 addresses
- * say, and nothing below is used.  On the FDT lane RP1 is a PCI device
+ * Under ACPI, EDK2 places RP1 where the device tree's RP1 addresses
+ * say, and nothing below is used.  On an FDT boot RP1 is a PCI device
  * enumerated by bcm2712_pcib, its BAR1 lands wherever PCI puts it, and RP1
  * registers cannot be touched until then.  The rp1 PCI driver publishes
  * BAR1 when it attaches; drivers that need RP1 defer to that.  It publishes
  * its bus DMA tag too, the parent for tags of RP1's bus masters, which is
- * NULL on the ACPI lane.
+ * NULL under ACPI.
  */
 void bcm2712_rp1_publish(bus_addr_t pa, bus_size_t size, bus_dma_tag_t dmat);
 bool bcm2712_rp1_bar(bus_addr_t *pa, bus_size_t *size);

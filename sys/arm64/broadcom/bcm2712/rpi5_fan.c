@@ -149,17 +149,16 @@ static struct rpi5_cooling_fan cooling_fan = {
 	.controller = RPI5_CTRL_NN,
 	/*
 	 * Policy defaults, chosen in simulation against 200 unseen plants with
-	 * the measured sensor model in the loop (tools/rpi5_fan_nn/train.c).
+	 * the measured sensor model in the loop.
 	 *
 	 * tol = 4000 and dd_shift = 3: safety tied with the region curve, 46%
 	 * less mean duty, corrections 29 counts/min against the curve's 31, no
 	 * reversals of 4 counts or more, and recovery from a supervisor trip to
 	 * below duty 50 in 70 s.  tol = 2000 is 2% lower on duty but makes 24%
-	 * larger corrections.  An earlier default of 14000 was a mistake: a hold
-	 * band that wide left the fan latched at full speed on an idle board after
-	 * a supervisor trip, which dunn demonstrated.  crit sits
-	 * below the 80 C throttle point so the supervisor acts before the SoC
-	 * clock-limits rather than in the same tick.  A 60 tick debounce on the
+	 * larger corrections.  A much wider hold band (14000) leaves the fan
+	 * latched at full speed on an idle board after a supervisor trip.  crit
+	 * sits below the 80 C throttle point so the supervisor acts before the
+	 * SoC clock-limits rather than in the same tick.  A 60 tick debounce on the
 	 * inadequate-cooling warning caught 95.6% of sustained under-cooled
 	 * episodes at 0.39 false alarms per hour, against 1.41 at 15 ticks; the
 	 * warning is a log message, and emergencies belong to the supervisor.
@@ -635,8 +634,8 @@ rpi5_thermal_tick(void *arg)
 	if (error) {
 		/*
 		 * The sensor is not answering, so there is no temperature to
-		 * control on.  Reusing the last reading -- which is what this
-		 * used to do -- is the dangerous choice: it leaves the
+		 * control on.  Reusing the last reading is the dangerous
+		 * choice: it leaves the
 		 * controller and its critical-temperature supervisor acting on
 		 * a number that stopped tracking the die, and a board can
 		 * overheat with every sysctl looking healthy.  Run the fan at

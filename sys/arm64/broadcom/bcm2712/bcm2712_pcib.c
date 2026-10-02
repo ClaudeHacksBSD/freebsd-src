@@ -22,7 +22,7 @@
  *
  * A fork of sys/arm/broadcom/bcm2835/bcm2838_pci.c, the BCM2711 (Pi 4)
  * driver for the same Broadcom STB controller family, kept shaped for a
- * later merge back into it (rpi5_modules.git doc/M2_PCIE_HOST.md):
+ * later merge back into it:
  *
  *  - Function names, order and flow follow bcm2838_pci.c, with the
  *    bcm2712_pcib_ prefix in place of bcm_pcib_.
@@ -30,28 +30,30 @@
  *    mirrors Linux pcie-brcmstb.c struct pcie_cfg_data.  The BCM2711
  *    values that bcm2838_pci.c hardcodes are given beside each field.
  *
- * Divergences from bcm2838_pci.c, as of phase 5:
+ * Divergences from bcm2838_pci.c:
  *
  *  BCM2712 differs:
- *   - Each controller is brought up from reset as Linux does (phases 3
- *     and 5; loader tunable hw.bcm2712_pcib.reset, DT unit addresses,
- *     default both, "1000110000 1000120000"), or adopted with the link the
- *     firmware trained (phase 1; hw.bcm2712_pcib.adopt, default empty; it
- *     takes precedence), or left untouched.  The VPU firmware logs "PCI1 reset" at hand-off (and
- *     "PCI2 reset" unless config.txt sets pciex4_reset=0), yet the bridge
- *     resets in brcm,brcmstb-reset all read deasserted, so no register
- *     tells us which controllers are safe to read without a reset.
+ *   - Each controller is brought up from reset as Linux does (loader
+ *     tunable hw.bcm2712_pcib.reset, DT unit addresses, default both,
+ *     "1000110000 1000120000"), or adopted with the link the firmware
+ *     trained (hw.bcm2712_pcib.adopt, default empty; it takes
+ *     precedence), or left untouched.  The VPU firmware logs "PCI1 reset"
+ *     at hand-off (and "PCI2 reset" unless config.txt sets
+ *     pciex4_reset=0), yet the bridge resets in brcm,brcmstb-reset all
+ *     read deasserted, so no register tells us which controllers are safe
+ *     to read without a reset.
  *   - Adopting, the DT "bridge" reset (via hwreset) is checked before any
  *     controller register is read: asserted means unusable.  Necessary,
  *     not sufficient, as above.
  *   - From reset: the bridge reset, the 54 MHz refclk PLL set-up over MDIO,
  *     PERST# and link training follow Linux pcie-brcmstb.c for
- *     bcm2712_cfg (see "Phase 3" below).  The shared "rescal" calibration
- *     is run only if hw.bcm2712_pcib.rescal is set: both links train on the
- *     firmware's calibration.  PERST# is not released unless RAM is mapped
- *     1:1 for DMA.  For PCIe2 the VDM QoS map (brcm,vdm-qos-map) is set up
- *     too.  RP1 keeps its firmware and PLLs through PERST# (M2 phase 5),
- *     so config.txt need not keep PCIe2's link (pciex4_reset=0).
+ *     bcm2712_cfg (see "Bringing a controller up from reset" below).  The
+ *     shared "rescal" calibration is run only if hw.bcm2712_pcib.rescal is
+ *     set: both links train on the firmware's calibration.  PERST# is not
+ *     released unless RAM is mapped 1:1 for DMA.  For PCIe2 the VDM QoS
+ *     map (brcm,vdm-qos-map) is set up too.  RP1 keeps its firmware and
+ *     PLLs through PERST#, so config.txt need not keep PCIe2's link
+ *     (pciex4_reset=0).
  *   - UBUS/AXI error replies are suppressed so that failed reads return
  *     all ones (Linux brcm_pcie_post_setup_bcm2712).  Without this, config
  *     reads of empty slots return 0xdeaddead, which enumeration would take
@@ -59,24 +61,24 @@
  *   - Downstream config accesses are refused while the link is down, as
  *     Linux brcm_pcie_map_bus() does; such an access aborts the CPU.
  *   - MSI is not provided here: the DT's msi-parent is a separate
- *     brcm,bcm2712-mip controller (phase 4), not this node.
+ *     brcm,bcm2712-mip controller (bcm2712_mip.c), not this node.
  *
  *   - Inbound (DMA) windows: one per dma-ranges entry, programmed as
  *     Linux set_inbound_win_registers() does for BCM2712 (RC_BARn size and
  *     PCIe address, UBUS_BARn remap to the CPU address), and the unused
  *     ones cleared, because we adopt the controller without a reset.
  *     FreeBSD does not translate dma-ranges, so RAM must be mapped 1:1;
- *     the freebsd-pcie2 overlay does that (rpi5_modules.git
- *     doc/DT_OVERLAYS.md).  Attach says so if it is not.
+ *     the bcm2712-rpi5-pcieN device-tree overlays do that
+ *     (sys/dts/arm64/overlays).  Attach says so if it is not.
  *   - The 32-bit outbound window shadows the RAM at the same addresses,
- *     because RAM is mapped 1:1.  The freebsd-pcieN overlays reserve that
- *     RAM (/reserved-memory, no-map), as EDK2 does on the ACPI lane, and
- *     then the DMA tag has nothing to exclude.  Without the reservation
+ *     because RAM is mapped 1:1.  The overlays reserve that RAM
+ *     (/reserved-memory, no-map), as the EDK2 port for this board does,
+ *     and then the DMA tag has nothing to exclude.  Without the reservation
  *     the tag keeps DMA out of the shadowed RAM, by bouncing
  *     (bcm2838_pci.c limits DMA with its tag too, for another reason).
  *
  *  Adopted controllers only -- a link the firmware already trained
- *  (pciex4_reset=0; not used by default since phase 5):
+ *  (pciex4_reset=0; not the default):
  *   - No bridge reset, PHY/PLL set-up, PERST# or link training; if the
  *     link is not up, attach fails.
  *
@@ -153,7 +155,7 @@
 #define MAX_INBOUND_WINS			10
 
 /*
- * Bring-up from reset (phase 3), BCM2712 (7712) layout.  Linux names:
+ * Bring-up from reset, BCM2712 (7712) layout.  Linux names:
  * PCIE_RC_CFG_VENDOR_VENDOR_SPECIFIC_REG1, PCIE_RC_CFG_PRIV1_*,
  * PCIE_RC_DL_MDIO_*, PCIE_RC_PL_PHY_CTL_15, PCIE_MISC_*, and the
  * PCIE_MISC_HARD_PCIE_HARD_DEBUG_* bits of cfg->hard_debug.
@@ -254,28 +256,26 @@ static const struct bcm2712_pcib_cfg bcm2712_cfg = {
 };
 
 /*
- * Controllers phase 1 may adopt, by DT unit address, separated by spaces or
- * commas; a controller listed here is adopted even if .reset lists it too.
- * Empty by default since phase 5 (PCIe2 until then, with pciex4_reset=0).
- * See the comment at the top.
+ * Controllers to adopt with the link the firmware trained, by DT unit
+ * address, separated by spaces or commas; a controller listed here is
+ * adopted even if .reset lists it too.  Empty by default.  Adopting PCIe2
+ * needs pciex4_reset=0 in config.txt.  See the comment at the top.
  */
 static char bcm2712_pcib_adopt[128] = "";
 static SYSCTL_NODE(_hw, OID_AUTO, bcm2712_pcib, CTLFLAG_RD | CTLFLAG_MPSAFE,
     NULL, "BCM2712 PCIe host controller");
 SYSCTL_STRING(_hw_bcm2712_pcib, OID_AUTO, adopt, CTLFLAG_RDTUN,
     bcm2712_pcib_adopt, sizeof(bcm2712_pcib_adopt),
-    "DT unit addresses of the controllers phase 1 may adopt");
+    "DT unit addresses of the controllers adopted as the firmware left "
+    "them");
 
 /*
  * Controllers brought up from reset, in the same form: both by default,
- * PCIe1 (the NVMe slot, phase 3) and PCIe2 (RP1, phase 5).  Each needs its
- * freebsd-pcieN overlay: without a 1:1 RAM mapping, attach leaves the device
- * in PERST#.  To leave one untouched, drop it from the list at the loader;
- * "1000110000" alone gives a boot without RP1 (no fan PWM, Ethernet, USB or
- * RP1 GPIO), the way back if PCIe2's bring-up fails.  (PCIe1's multi-page
- * NVMe reads were wrong until nvme(4) kept bounced page offsets and the
- * overlays reserved the RAM the windows shadow: rpi5_modules.git
- * doc/M2_PCIE_HOST.md, phase 3.)
+ * PCIe1 (the external connector) and PCIe2 (RP1).  Each needs its
+ * bcm2712-rpi5-pcieN overlay: without a 1:1 RAM mapping, attach leaves the
+ * device in PERST#.  To leave one untouched, drop it from the list at the
+ * loader; "1000110000" alone gives a boot without RP1 (no fan PWM,
+ * Ethernet, USB or RP1 GPIO), the way back if PCIe2's bring-up fails.
  */
 static char bcm2712_pcib_reset[128] = "1000110000 1000120000";
 SYSCTL_STRING(_hw_bcm2712_pcib, OID_AUTO, reset, CTLFLAG_RDTUN,
@@ -294,12 +294,10 @@ SYSCTL_INT(_hw_bcm2712_pcib, OID_AUTO, rescal, CTLFLAG_RDTUN,
     "Run rescal before bringing a controller up from reset");
 
 /*
- * MISC_CTRL fields a bring-up from reset writes, where Linux and EDK2 differ
- * (rpi5_modules.git doc/M2_PCIE_HOST.md, phase 3).  The defaults are Linux's
- * for 7712; EDK2's effective values are burst 0, rcb64 0, scb0_size 0x15.
- * -1 leaves a field as the bridge reset left it.  Added to find which of
- * them broke multi-page NVMe reads; none did (the cause was bounced page
- * offsets).  Kept for experiments; not a permanent interface.
+ * MISC_CTRL fields a bring-up from reset writes, where Linux and EDK2
+ * differ.  The defaults are Linux's for 7712; EDK2's effective values are
+ * burst 0, rcb64 0, scb0_size 0x15.  -1 leaves a field as the bridge reset
+ * left it.  For experiments; not a permanent interface.
  */
 static int bcm2712_pcib_burst = MAX_BURST_SIZE_512;
 SYSCTL_INT(_hw_bcm2712_pcib, OID_AUTO, burst, CTLFLAG_RDTUN,
@@ -393,8 +391,8 @@ bcm2712_pcib_check_ranges(device_t dev)
 	 * generic FDT host has already put every range in its resource
 	 * manager, so PCI may place BARs in one this driver never programs,
 	 * and a second region there breaks growing a bridge window
-	 * (INVARIANTS "next resource mismatch").  The freebsd-pcie2 overlay
-	 * leaves one range (rpi5_modules.git doc/DT_OVERLAYS.md).
+	 * (INVARIANTS "next resource mismatch").  The bcm2712-rpi5-pcieN
+	 * overlays leave one range.
 	 */
 	for (i = 1; i < MAX_RANGES_TUPLES; ++i) {
 		if (ranges[i].size > 0)
@@ -788,7 +786,7 @@ bcm2712_pcib_ram_in(vm_paddr_t lo, vm_paddr_t hi)
  * range) decodes an address, a device's DMA to it is taken for a transfer
  * to a device behind the bridge, and never reaches RAM.
  *
- * The freebsd-pcieN overlays reserve the shadowed RAM, so nothing can be
+ * The bcm2712-rpi5-pcieN overlays reserve the shadowed RAM, so nothing can be
  * allocated there, and the tag needs no exclusion.  That matters beyond
  * the shadow itself: a child tag's exclusion is the parent's widened to
  * the child's highaddr (common_bus_dma_tag_create() takes the MIN of the
@@ -837,8 +835,7 @@ bcm2712_pcib_setup_inbound(struct bcm2712_pcib_softc *sc)
 		device_printf(sc->dev, "WARNING: dma-ranges do not map RAM "
 		    "(0-0x%jx) 1:1, and FreeBSD does not translate them: DMA "
 		    "by devices behind this bridge will not reach RAM.  "
-		    "Expected a freebsd-pcieN device-tree overlay "
-		    "(rpi5_modules.git doc/DT_OVERLAYS.md).\n",
+		    "Expected the bcm2712-rpi5-pcieN device-tree overlay.\n",
 		    (uintmax_t)ram_end);
 	sc->ram_1to1 = ram_1to1;
 
@@ -918,7 +915,7 @@ bcm2712_pcib_listed(device_t dev, const char *list)
 }
 
 /*
- * Phase 3: bringing a controller up from reset, as Linux pcie-brcmstb.c
+ * Bringing a controller up from reset, as Linux pcie-brcmstb.c
  * does with bcm2712_cfg: brcm_pcie_probe(), brcm_pcie_setup(),
  * brcm_pcie_post_setup_bcm2712() and brcm_pcie_start_link().  bcm2712_cfg
  * has no PHY to start (brcm_phy_start() does nothing without has_phy),
@@ -1140,7 +1137,7 @@ bcm2712_pcib_post_setup(struct bcm2712_pcib_softc *sc)
 	 * forwarding panic priorities separately is broken.  As Linux
 	 * brcm_pcie_post_setup_bcm2712().  The firmware sets the latter up
 	 * when it trains PCIe2 (MISC_CTRL_1 had EN_VDM_QOS_CONTROL, adopted);
-	 * from reset it is ours to do (phase 5).
+	 * from reset it is ours to do.
 	 */
 	node = ofw_bus_get_node(sc->dev);
 	if (OF_getprop(node, "brcm,fifo-qos-map", qos_map, 4) == 4) {
@@ -1313,8 +1310,8 @@ bcm2712_pcib_start_link(struct bcm2712_pcib_softc *sc)
 
 /*
  * The controller's own registers that bear on DMA, where Linux, EDK2 and the
- * firmware differ (rpi5_modules.git doc/M2_PCIE_HOST.md, phase 3): logged as
- * found at attach, and readable later under dev.pcib.N.regs.
+ * firmware differ: logged as found at attach, and readable later under
+ * dev.pcib.N.regs.
  */
 static const struct {
 	const char	*name;
@@ -1397,8 +1394,8 @@ bcm2712_pcib_bridge_reset_state(device_t dev)
 
 /*
  * Check the DT "bridge" reset before any controller register is read.  A
- * controller held in reset raises an SError on access, and bringing one out
- * of reset is phases 3 and 5 of M2_PCIE_HOST.md.
+ * controller held in reset raises an SError on access; one is brought out
+ * of reset only if hw.bcm2712_pcib.reset lists it.
  */
 static int
 bcm2712_pcib_check_reset(device_t dev)
@@ -1443,7 +1440,7 @@ bcm2712_pcib_attach(device_t dev)
 	sc->cfg = (const struct bcm2712_pcib_cfg *)
 	    ofw_bus_search_compatible(dev, compat_data)->ocd_data;
 
-	/* Adopt a trained link (phase 1), or bring one up from reset. */
+	/* Adopt a trained link, or bring one up from reset. */
 	adopt = bcm2712_pcib_listed(dev, bcm2712_pcib_adopt);
 	if (!adopt && !bcm2712_pcib_listed(dev, bcm2712_pcib_reset)) {
 		device_printf(dev, "not in hw.bcm2712_pcib.adopt (\"%s\") or "
@@ -1476,7 +1473,7 @@ bcm2712_pcib_attach(device_t dev)
 
 	if (adopt) {
 		/*
-		 * Phase 1 adopts the link the firmware trained (pciex4_reset=0
+		 * Adopting takes the link the firmware trained (pciex4_reset=0
 		 * for PCIe2); it does not reset, set up the PHY or train one.
 		 */
 		if (!bcm2712_pcib_link_up(sc)) {

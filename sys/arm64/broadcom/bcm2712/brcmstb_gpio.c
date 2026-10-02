@@ -21,9 +21,9 @@
  * In particular wl-on-reg -- the vmmc-supply of the WiFi SDIO slot -- is a
  * regulator-fixed switched by WL_ON.  With no driver here, regfix(4) can
  * never find its GPIO, the WiFi chip stays unpowered, and cyw(4) cannot
- * attach on an FDT boot.  Measured with the loader's peek command before any
- * kernel ran (rpi5_modules.git doc/LOADER_ZIMAGE.md): bank 0 IODIR read
- * 0xffffffff (every pin an input) and DATA bit 28 read 0.
+ * attach on an FDT boot.  As the firmware leaves them, before any kernel
+ * runs, bank 0 IODIR reads 0xffffffff (every pin an input) and DATA bit 28
+ * reads 0.
  *
  * REGISTERS
  *

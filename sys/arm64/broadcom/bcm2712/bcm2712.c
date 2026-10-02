@@ -273,7 +273,7 @@ bcm2712_get_softc(void)
 }
 
 /*
- * RP1's peripheral window, published by the rp1 PCI driver on the FDT lane;
+ * RP1's peripheral window, published by the rp1 PCI driver on an FDT boot;
  * see bcm2712_var.h.  Drivers that need RP1 before then queue a function to
  * run when it is published.
  */
@@ -404,10 +404,10 @@ bcm2712_pwm_set_config(u_int channel, u_int period_ns, u_int duty_ns)
 
 	/*
 	 * Convert nanoseconds to RP1 PWM clock cycles.  The clock is
-	 * 6.144 MHz, so RP1_PWM_CLK_PERIOD_NS is 163 ns per tick -- not the
-	 * 50 MHz this comment used to claim.  For the fan's 41566 ns period
-	 * that makes range exactly 255, so a 0-255 speed maps one-to-one
-	 * onto duty ticks and 255 is precisely full scale.
+	 * 6.144 MHz, so RP1_PWM_CLK_PERIOD_NS is 163 ns per tick.  For the
+	 * fan's 41566 ns period that makes range exactly 255, so a 0-255
+	 * speed maps one-to-one onto duty ticks and 255 is precisely full
+	 * scale.
 	 */
 	range = (period_ns + RP1_PWM_CLK_PERIOD_NS / 2) / RP1_PWM_CLK_PERIOD_NS;
 	duty  = (duty_ns  + RP1_PWM_CLK_PERIOD_NS / 2) / RP1_PWM_CLK_PERIOD_NS;
@@ -743,7 +743,7 @@ bcm2712_modevent(module_t mod __unused, int event, void *arg __unused)
 		 * The RP1 half -- PWM1, its clock, GPIO45 -- needs RP1 to be
 		 * reachable.  Under ACPI, EDK2 has already placed it.  On an FDT
 		 * boot, RP1 is a PCI device, so this waits until the rp1 PCI
-		 * driver has attached and published its BAR (M2 phase 2).
+		 * driver has attached and published its BAR.
 		 */
 		if (bcm2712_rp1_needs_pci()) {
 			if (bcm2712_rp1_defer(bcm2712_rp1_setup, sc) != 0)

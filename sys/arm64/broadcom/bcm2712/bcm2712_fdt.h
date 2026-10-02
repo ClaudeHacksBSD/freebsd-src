@@ -33,8 +33,6 @@
  *     axi ranges     ->   identity             (root)
  *
  * and ofw_reg_to_paddr() gets it wrong: it returns 0xc0_40100000 unchanged.
- * Measured on dunn, not deduced -- see the fdtprobe results in
- * doc/FDT_BOOT.md of rpi5_modules.git.
  *
  * The reason is that rp1 is a *simple-bus child of a PCI node*, which the
  * function does not expect.  For a node under rp1 it computes pci = 0 (rp1
@@ -56,7 +54,7 @@
  * Callers pass the fallback they already had and ignore a failure, so a board
  * whose device tree does not describe a block keeps working exactly as before.
  *
- * On the FDT lane (M2 phase 2), RP1 is a PCI device and BAR1 lands wherever
+ * On an FDT boot, RP1 is a PCI device and BAR1 lands wherever
  * PCI puts it, not where rp1's ranges assume.  Once the rp1 PCI driver has
  * published BAR1 (bcm2712_rp1_bar()), hop 2 is replaced: the address is
  * BAR1's CPU address plus the offset into BAR1 that hop 1 gives.
@@ -248,7 +246,7 @@ bcm2712_fdt_rp1_reg(phandle_t node, int regno, bus_addr_t *pa,
 	if (!hop1)
 		return (false);
 
-	/* FDT lane: BAR1 is where PCI put it, as the rp1 driver found it. */
+	/* FDT boot: BAR1 is where PCI put it, as the rp1 driver found it. */
 	if (bcm2712_rp1_bar(&bar_pa, &bar_size)) {
 		if (pci_addr < pci_base0 || pci_addr - pci_base0 >= bar_size)
 			return (false);

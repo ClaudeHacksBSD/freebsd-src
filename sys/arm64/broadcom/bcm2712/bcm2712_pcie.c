@@ -4,7 +4,7 @@
  * Copyright (c) 2025 FreeBSD Contributors
  * All rights reserved.
  *
- * bcm2712_pcie — BCM2712 PCIe2→RP1 interrupt router (Milestone 3)
+ * bcm2712_pcie — BCM2712 PCIe2→RP1 interrupt router
  *
  * Routes the RP1 GEM Ethernet MAC's interrupt to rp1_eth.  This is not a PCIe
  * host controller driver: it exists only to own a device_t that can legally
@@ -12,19 +12,19 @@
  * enough of the GEM to tell whether the GEM was the source.
  *
  * This driver acts as a filter-only handler: it reads CGEM_INT_STATUS and
- * dispatches to rp1_eth's ISR if the GEM fired.  On the ACPI lane the line
- * is shared with xhci0/xhci1.
+ * dispatches to rp1_eth's ISR if the GEM fired.  Under ACPI the line is
+ * shared with xhci0/xhci1.
  *
  * Discovery is by Device Tree, and registers are mapped by physical address,
- * the same way every other driver in this set reaches RP1.  On the FDT lane
+ * the same way every other driver in this set reaches RP1.  On an FDT boot
  * RP1 is a PCI device behind bcm2712_pcib, and this driver attaches below
  * rp1pci, the RP1 PCI driver, once it has published BAR1: RP1's windows are
  * found relative to BAR1 (bcm2712_fdt.h).  The interrupt is the GEM's own
  * RP1 vector (interrupts = <6 4>, level), which rp1pci delivers as RP1's
  * interrupt controller and acknowledges after the filter (IACK) -- by then
- * rp1_eth's filter has masked the GEM (rpi5_modules.git doc/M2_PCIE_HOST.md,
- * phase 4b).  Until phase 4b it was RP1's INTA, GIC SPI 229, which never
- * fired.  The FDT is available for discovery on both lanes: machdep.c
+ * rp1_eth's filter has masked the GEM.  RP1's INTA, GIC SPI 229, is not
+ * used: it never fires on an FDT boot.  The FDT is available for discovery
+ * under ACPI too: machdep.c
  * installs and initialises OFW unconditionally, before bus_probe() picks a
  * bus method.
  *
@@ -82,10 +82,10 @@
 				 CGEM_INT_HRESP_NOT_OK | CGEM_INT_RX_OVERRUN)
 
 /*
- * RP1 register windows, as offsets into RP1's peripheral BAR (BAR1).  On the
- * ACPI lane the GEM window comes from _CRS instead (EDK2 places BAR1 at CPU
- * 0x1f_00000000; see RP1_ETH_MAC_BASE_PHYS in rp1_eth_var.h).  On the FDT
- * lane the GEM is resolved from its node against the published BAR1, and
+ * RP1 register windows, as offsets into RP1's peripheral BAR (BAR1).  Under
+ * ACPI the GEM window comes from _CRS instead (EDK2 places BAR1 at CPU
+ * 0x1f_00000000; see RP1_ETH_MAC_BASE_PHYS in rp1_eth_var.h).  On an FDT
+ * boot the GEM is resolved from its node against the published BAR1, and
  * GEM_MAC_OFFSET is the fallback.
  *
  * eth_cfg, at 0x104000, is not mapped here: nothing in this driver uses it.
@@ -102,9 +102,9 @@
  * drivers/mfd/rp1.c is RP1's interrupt controller and reaches the block
  * through BAR1 itself, so nothing needs to name it.  Until rp1pci does the
  * same, the address is derived: BAR1 + 0x108000, where BAR1 is EDK2's
- * 0x1f_00000000 on the ACPI lane and the published BAR1 on the FDT lane.
+ * 0x1f_00000000 under ACPI and the published BAR1 on an FDT boot.
  */
-#define PCIE_CFG_PHYS       0x1f00108000UL  /* ACPI lane; see above */
+#define PCIE_CFG_PHYS       0x1f00108000UL  /* under ACPI; see above */
 #define PCIE_CFG_OFFSET     0x108000        /* in RP1's peripheral BAR */
 #define PCIE_CFG_SIZE       0x200
 #define PCIE_CFG_MSIX_CFG_0 0x008   /* MSIX_CFG_n base; vector n at offset +n*4 */
@@ -121,7 +121,7 @@
 #define RP1_INT_ETH          6      /* fallback; see rp1_int_eth */
 
 /*
- * The ACPI lane's line: the DSDT override names GSI 261, which is GIC SPI
+ * The line under ACPI: the DSDT override names GSI 261, which is GIC SPI
  * 229, RP1's INTA in the Pi 5 device tree's pcie@1000120000 interrupt-map.
  */
 #define RP1_GEM_GIC_SPI		229
@@ -353,8 +353,8 @@ bcm2712_pcie_map_gem_irq(device_t dev)
 
 /*
  * Map the GEM MAC window, and under ACPI RP1's PCIE_CFG block.  Under ACPI
- * the MAC window is the device's first _CRS memory resource.  On the FDT
- * lane it is inside BAR1, which rp1pci owns, so it is mapped directly by
+ * the MAC window is the device's first _CRS memory resource.  On an FDT
+ * boot it is inside BAR1, which rp1pci owns, so it is mapped directly by
  * address; PCIE_CFG is rp1pci's, which acknowledges the vector itself.
  */
 static int

@@ -25,8 +25,6 @@
  * from them with GIC_ALLOC_MSI()/GIC_ALLOC_MSIX(), and the interrupts are
  * the GIC's own, so they need no dispatch here.  Only the message data
  * differs: GICv2m's is the SPI's interrupt ID, the MIP's is the vector.
- *
- * rpi5_modules.git doc/M2_PCIE_HOST.md, phase 4.
  */
 
 #include <sys/param.h>

@@ -16,7 +16,7 @@
  *
  *	sysctl hw.rpi_fw.tryboot=1 && shutdown -r now
  *
- * With config.txt booting the known-good lane and tryboot.txt booting
+ * With config.txt booting a known-good configuration and tryboot.txt booting
  * something under test, a failed test costs one power cycle and never a
  * physical jumper.
  *
@@ -28,10 +28,9 @@
  * reboot behaves exactly as it did before this driver was loaded.
  *
  * The reset itself is arm64's cpu_reset_hook, which is psci_reset(): PSCI
- * SYSTEM_RESET to BL31.  That is the same path the loader's "tryboot" was
- * measured on (rpi5_modules.git/doc/LOADER_ZIMAGE.md, 2026-09-25), and the
- * flag survived it.  EDK2's ResetSystem is not involved, even on the ACPI
- * lane.
+ * SYSTEM_RESET to BL31.  That is the path the loader's "tryboot" command
+ * takes too, and the flag survives it.  EDK2's ResetSystem is not involved,
+ * even under ACPI.
  *
  * WHY NOT bcm2835_mbox
  *
@@ -46,16 +45,17 @@
  * mailbox@7c013880, "brcm,bcm2835-mbox", reg = <0x7c013880 0x40> under
  * /soc@107c000000, whose ranges put it at CPU physical 0x107c013880.  The
  * property buffer is handed to the VPU as a plain physical address: the
- * firmware node carries an empty dma-ranges, and loader/mboxtest.bin
- * confirmed it on this board (board revision and serial matched the
- * firmware's own log).  The message is a 32-bit address with the channel
+ * firmware node carries an empty dma-ranges, and a request sent that way
+ * is answered (the board revision and serial match the firmware's own
+ * log).  The message is a 32-bit address with the channel
  * in its low four bits, but the VPU only processes buffers below 1 GB --
- * measured on both lanes; see the allocation in rpi_fw_attach().
+ * under ACPI and on an FDT boot alike; see the allocation in
+ * rpi_fw_attach().
  *
  * Found through the device tree like the other drivers in this directory,
  * and attached to nexus for the same reason (see bcm2712_fdt.h): OFW is
- * initialised before the bus method is chosen, so this works on the ACPI
- * lane as well as the FDT one.
+ * initialised before the bus method is chosen, so this works under ACPI
+ * as well as on an FDT boot.
  *
  * THE RTC
  *
@@ -71,8 +71,8 @@
  *
  * CONCURRENCY
  *
- * The mailbox is shared with anything else that talks to the VPU.  On the
- * ACPI lane that may include EDK2 runtime services called by the kernel.
+ * The mailbox is shared with anything else that talks to the VPU.  Under
+ * ACPI that may include EDK2 runtime services called by the kernel.
  * This driver only touches the mailbox when a sysctl is read or written, or
  * at shutdown with the flag armed, and it takes only replies on its own
  * channel.  A collision is possible in principle and has not been observed.
@@ -199,8 +199,8 @@ mbox_wait(struct rpi_fw_softc *sc, uint32_t mask, uint32_t want)
 
 /*
  * One tag, one transaction.  inlen bytes of val are sent; vallen bytes of
- * reply are copied back.  Same buffer layout as the loader and
- * tools/vcio_test.c.  Caller holds sc_mtx.
+ * reply are copied back.  The same buffer layout as the loader's
+ * (stand/arm64/rpiboot/rpi_mbox.c).  Caller holds sc_mtx.
  *
  * The buffer is mapped uncached, so the VPU sees the ARM's writes and the ARM
  * sees the VPU's reply without cache maintenance; the dsb orders the buffer
@@ -535,7 +535,7 @@ rpi_fw_attach(device_t dev)
 	 *
 	 * Below 1 GB is measured, not documented.  Every buffer the VPU has
 	 * processed was under 0x40000000 -- 0x2f282000, 0x3cc000, 0x3b0d3000
-	 * and 0x4cd000 on the ACPI lane, and the loader's near 0x200000 --
+	 * and 0x4cd000 under ACPI, and the loader's near 0x200000 --
 	 * while the one allocated at 0x40233000 on an FDT boot was answered
 	 * on our channel with buf[1] still 0: the VPU never read it.  So the
 	 * device tree's identity dma-ranges does not mean the VPU can reach
@@ -560,8 +560,7 @@ rpi_fw_attach(device_t dev)
 		 * means the VPU replied on our channel but left buf[1] other
 		 * than 0x80000000: it answered without processing the buffer
 		 * it was given, which is the address question, not a dead
-		 * channel.  Seen on the FDT lane on 2026-09-27, where the
-		 * same code works on the ACPI lane.
+		 * channel.  Seen on an FDT boot with a buffer above 1 GB.
 		 */
 		device_printf(dev, "mailbox at 0x%jx did not answer (%d): "
 		    "buffer PA 0x%jx, response code 0x%08x\n", (uintmax_t)pa,

@@ -125,7 +125,7 @@ struct rpi5_nn_weights {
  * D deliberately does NOT follow pidctrl_classic(), which takes the change in
  * error since the last call.  The BCM2712 sensor quantises to 550 mC with
  * correlated noise of about 500 mC, so at 1 Hz a one-tick difference is
- * almost entirely noise: on dunn, a flat idle die produced one-tick changes
+ * almost entirely noise: a flat idle die produces one-tick changes
  * of up to +/-2200 mC on a third of all ticks, and the first network read
  * each flicker as a real 0.55 C/s slope.  D here is the change in error over
  * the last NN_SLOPE_N ticks, and derivative/dspan together give the slope.
