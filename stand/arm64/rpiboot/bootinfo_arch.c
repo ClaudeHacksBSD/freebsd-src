@@ -1,4 +1,10 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * Copyright (c) 2026 Jeremy McMillan
+ */
+
+/*
  * bootinfo_arch.c -- the platform half of bi_load(), for this board.
  */
 

@@ -1,4 +1,10 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * Copyright (c) 2026 Jeremy McMillan
+ */
+
+/*
  * time.c -- timekeeping for the Raspberry Pi 5 loader.
  *
  * From the AArch64 generic timer, which needs no setup and is readable at EL2

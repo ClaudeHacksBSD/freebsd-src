@@ -1,4 +1,10 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * Copyright (c) 2026 Jeremy McMillan
+ */
+
+/*
  * kboot.h -- a shim, present only to satisfy stand/efi/loader/bootinfo.c.
  *
  * bootinfo.c is shared rather than forked, because the metadata it builds is a

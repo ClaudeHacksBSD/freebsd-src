@@ -1,6 +1,6 @@
 #!/bin/sh
 #-
-# SPDX-License-Identifier: BSD-2-Clause
+# SPDX-License-Identifier: BSD-3-Clause
 #
 # Copyright (c) 2026 Jeremy McMillan
 #

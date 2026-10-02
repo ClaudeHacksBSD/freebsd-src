@@ -1,3 +1,8 @@
+#
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# Copyright (c) 2026 Jeremy McMillan
+#
 # The post-install step of the Raspberry Pi 5 installer card
 # (release/arm64/make-rpi5-memstick.sh): rpi5boot makes the card boot the
 # system that was just installed, and the other files are what it copies

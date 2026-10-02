@@ -1,4 +1,8 @@
 #
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# Copyright (c) 2026 Jeremy McMillan
+#
 # RPI5 -- Raspberry Pi 5 (BCM2712 + RP1) kernel configuration for FreeBSD/arm64
 #
 # Device Tree enumeration only: there is no ACPI in this kernel.  The DTB

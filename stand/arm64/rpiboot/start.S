@@ -1,4 +1,10 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * Copyright (c) 2026 Jeremy McMillan
+ */
+
+/*
  * start.S -- entry point for the Raspberry Pi 5 FreeBSD loader.
  *
  * The VPU firmware enters here per the Linux arm64 boot protocol:

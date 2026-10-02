@@ -1,4 +1,8 @@
 #
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# Copyright (c) 2026 Jeremy McMillan
+#
 # Shared settings for the arm64 loaders under stand/arm64.
 #
 # Its existence is load-bearing: bsd.init.mk includes exactly

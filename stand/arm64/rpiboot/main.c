@@ -1,4 +1,10 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * Copyright (c) 2026 Jeremy McMillan
+ */
+
+/*
  * main.c -- startup for the Raspberry Pi 5 FreeBSD loader.
  *
  * Entered from start.S with the stack set up and BSS zeroed, at EL2 with the

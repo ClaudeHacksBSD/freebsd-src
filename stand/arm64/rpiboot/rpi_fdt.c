@@ -1,4 +1,10 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * Copyright (c) 2026 Jeremy McMillan
+ */
+
+/*
  * rpi_fdt.c -- the stand FDT platform contract, for a firmware-supplied tree.
  *
  * Three functions, the same shape as stand/efi/fdt/efi_fdt.c.  The difference

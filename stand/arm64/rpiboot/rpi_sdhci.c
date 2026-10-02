@@ -1,4 +1,10 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * Copyright (c) 2026 Jeremy McMillan
+ */
+
+/*
  * rpi_sdhci.c -- SD card block reads for the Raspberry Pi 5 loader.
  *
  * Polled, PIO only.  See rpi_sdhci.h for which controller, the address

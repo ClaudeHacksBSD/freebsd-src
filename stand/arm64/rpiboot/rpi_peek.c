@@ -1,4 +1,10 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * Copyright (c) 2026 Jeremy McMillan
+ */
+
+/*
  * rpi_peek.c -- read device registers from the loader prompt.
  *
  *	peek <physical address> [count]

@@ -1,4 +1,10 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * Copyright (c) 2026 Jeremy McMillan
+ */
+
+/*
  * conf.c -- the device, filesystem and console tables for the Raspberry Pi 5
  * loader.
  *

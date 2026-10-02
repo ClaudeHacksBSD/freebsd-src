@@ -1,4 +1,10 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * Copyright (c) 2026 Jeremy McMillan
+ */
+
+/*
  * rpi_mbox.c -- the VPU property mailbox, and TryBoot boot selection.
  *
  * WHY THE LOADER TALKS TO THE VPU

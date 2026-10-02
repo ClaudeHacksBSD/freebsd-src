@@ -1,4 +1,10 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * Copyright (c) 2026 Jeremy McMillan
+ */
+
+/*
  * pl011_console.c -- struct console over the PL011 driver.
  *
  * The driver underneath this (pl011.c) transmits on the configuration the

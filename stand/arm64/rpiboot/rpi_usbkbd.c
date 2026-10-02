@@ -1,4 +1,10 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * Copyright (c) 2026 Jeremy McMillan
+ */
+
+/*
  * rpi_usbkbd.c -- a USB keyboard for the loader: RP1's xHCI controllers,
  * polled, and HID boot-protocol keyboards on their root ports.
  *

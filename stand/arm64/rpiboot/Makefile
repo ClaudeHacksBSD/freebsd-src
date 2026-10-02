@@ -1,4 +1,8 @@
 #
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# Copyright (c) 2026 Jeremy McMillan
+#
 # stand/arm64/rpiboot -- FreeBSD loader for the Raspberry Pi 5, booted
 # directly by the VPU firmware with no EFI anywhere.
 #

@@ -1,4 +1,10 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * Copyright (c) 2026 Jeremy McMillan
+ */
+
+/*
  * devicename.c -- device name parsing for the Raspberry Pi 5 loader.
  *
  * This is all of it, because libsa already does the work.  devparse() looks

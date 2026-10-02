@@ -1,3 +1,9 @@
+#
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# Copyright (c) 2026 Jeremy McMillan
+#
+
 .PATH: ${SRCTOP}/sys/arm64/broadcom/rp1
 
 KMOD=	rp1_pcie2_recon

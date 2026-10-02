@@ -1,4 +1,10 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * Copyright (c) 2026 Jeremy McMillan
+ */
+
+/*
  * pl011.h -- ARM PrimeCell PL011 UART, for the Raspberry Pi 5 FreeBSD loader.
  *
  * This is the loader's first and most important device: with no EFI console

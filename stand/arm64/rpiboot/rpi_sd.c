@@ -1,4 +1,10 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * Copyright (c) 2026 Jeremy McMillan
+ */
+
+/*
  * rpi_sd.c -- the SD card as the loader's disk0.
  *
  * rpi_sdhci.c reads blocks from the card in the Pi 5's slot; this file makes

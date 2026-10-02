@@ -1,4 +1,10 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * Copyright (c) 2026 Jeremy McMillan
+ */
+
+/*
  * pl011.c -- ARM PrimeCell PL011 UART driver for the Raspberry Pi 5 loader.
  *
  * Freestanding: no libc, no FreeBSD headers, nothing but <stdint.h>.  That is

@@ -1,4 +1,10 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * Copyright (c) 2026 Jeremy McMillan
+ */
+
+/*
  * rpi_mmu_asm.S -- the loader's EL2 exception vectors, and the handoff to
  * the kernel with the MMU and D-cache off.  See rpi_mmu.c.
  */

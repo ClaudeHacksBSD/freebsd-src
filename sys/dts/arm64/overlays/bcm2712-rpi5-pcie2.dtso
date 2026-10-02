@@ -1,5 +1,7 @@
-// SPDX-License-Identifier: BSD-2-Clause
+// SPDX-License-Identifier: BSD-3-Clause
 /*
+ * Copyright (c) 2026 Jeremy McMillan
+ *
  * Raspberry Pi 5: the RP1 root complex (pcie2, PCIe x4) with RAM mapped
  * 1:1 for DMA.
  *

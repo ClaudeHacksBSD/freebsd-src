@@ -1,4 +1,10 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * Copyright (c) 2026 Jeremy McMillan
+ */
+
+/*
  * rpi_mmu.c -- the MMU and caches for the Raspberry Pi 5 loader.
  *
  * WHY

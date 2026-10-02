@@ -1,4 +1,10 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * Copyright (c) 2026 Jeremy McMillan
+ */
+
+/*
  * ldscript.arm64 -- link the Raspberry Pi 5 loader at its load address.
  *
  * Linked at 0x200000 because that is where the firmware loads a config.txt

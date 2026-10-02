@@ -1,5 +1,7 @@
-// SPDX-License-Identifier: BSD-2-Clause
+// SPDX-License-Identifier: BSD-3-Clause
 /*
+ * Copyright (c) 2026 Jeremy McMillan
+ *
  * Raspberry Pi 5: the external PCIe connector's root complex (pcie1,
  * PCIe x1, usually an NVMe) with RAM mapped 1:1 for DMA.
  *

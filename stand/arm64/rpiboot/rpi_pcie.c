@@ -1,4 +1,10 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * Copyright (c) 2026 Jeremy McMillan
+ */
+
+/*
  * rpi_pcie.c -- just enough of PCIe2 to reach RP1, for the USB keyboard.
  *
  * RP1, the Pi 5's I/O chip, carries the USB controllers (and Ethernet,
