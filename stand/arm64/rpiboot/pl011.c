@@ -2,12 +2,9 @@
  * pl011.c -- ARM PrimeCell PL011 UART driver for the Raspberry Pi 5 loader.
  *
  * Freestanding: no libc, no FreeBSD headers, nothing but <stdint.h>.  That is
- * deliberate, so this same file can be linked into
- *
- *   - a bare-metal test image loaded by the VPU firmware (constest.bin),
- *     which is how it gets verified on hardware, and
- *   - the loader proper, behind the thin struct console wrapper in
- *     pl011_console.c.
+ * deliberate, so this same file can be linked into a bare-metal test image
+ * as well as into the loader, behind the thin struct console wrapper in
+ * pl011_console.c.
  *
  * Constraints that shape the code, all consequences of running with the MMU
  * off at EL2 straight out of the firmware:
@@ -259,7 +256,7 @@ pl011_loopback_byte(const struct pl011 *sc, uint8_t tx, uint32_t *prev_cr,
 	/*
 	 * Note: on this implementation LBE loops the transmitter back to the
 	 * receiver but does NOT stop driving the TXD pad, so the test byte is
-	 * also emitted on the wire.  Observed 2026-09-20: a stray 'Z' (0x5a)
+	 * also emitted on the wire: a stray 'Z' (0x5a)
 	 * appears in the console log immediately before the result line.  It
 	 * is cosmetic, but do not read it as the byte having escaped the
 	 * loopback -- it arrives on both paths.

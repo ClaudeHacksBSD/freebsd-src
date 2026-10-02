@@ -1,10 +1,10 @@
 /*-
  * ldscript.arm64 -- link the Raspberry Pi 5 loader at its load address.
  *
- * Linked at 0x200000 because that is where the firmware was measured to load
- * a config.txt "kernel=" file:
+ * Linked at 0x200000 because that is where the firmware loads a config.txt
+ * "kernel=" file, as its own log says:
  *
- *	Loading 'sdtest.bin' to 0x00000000 offset 0x200000
+ *	Loading 'rpiboot.bin' to 0x00000000 offset 0x200000
  *
  * Linking at the real load address means nothing has to be relocated at
  * runtime, so stand/common/self_reloc.c is not needed and there is no window
@@ -15,7 +15,7 @@
  * This is also why device_tree_address must stay clear of this range: the
  * loader is about a megabyte once the memory disk is embedded, so a blob at
  * 0x1f0000 would be overwritten outright.  0x4000000 is what
- * tools/boot_config_install.sh configures and checks.
+ * loader.rpiboot(8) gives for config.txt.
  */
 
 OUTPUT_ARCH(aarch64)

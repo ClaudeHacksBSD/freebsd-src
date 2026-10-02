@@ -1,15 +1,10 @@
 /*-
- * pl011_console.c -- struct console over the verified PL011 driver.
+ * pl011_console.c -- struct console over the PL011 driver.
  *
- * The driver underneath this (pl011.c) was proven on hardware before any of
- * it was wired into the loader: transmit on the inherited configuration,
- * receive confirmed both by the PL011's internal loopback and by real bytes
- * arriving from the wire, and a full reprogram that reproduced the firmware's
- * own register values exactly.  See the constest results in
- * rpi5_modules.git/doc/LOADER_ZIMAGE.md.
- *
- * This file is only the adaptor, and every method maps one-for-one onto
- * something already tested.
+ * The driver underneath this (pl011.c) transmits on the configuration the
+ * firmware leaves, and can reprogram the UART to the same register values.
+ * This file is only the adaptor: every method maps one-for-one onto a
+ * function there.
  */
 
 #include <stand.h>

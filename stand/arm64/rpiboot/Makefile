@@ -3,9 +3,7 @@
 # directly by the VPU firmware with no EFI anywhere.
 #
 # The firmware loads this as "the kernel" (config.txt kernel=rpiboot.bin,
-# os_check=0) per the Linux arm64 boot protocol, which was measured on
-# hardware rather than assumed -- see the entry contract in
-# rpi5_modules.git/doc/LOADER_ZIMAGE.md:
+# os_check=0) per the Linux arm64 boot protocol:
 #
 #	EL2, MMU off, x0 = DTB physical address, x1..x3 = 0
 #	image loaded at 0x200000
@@ -22,12 +20,11 @@ NEWVERSWHAT=	"Raspberry Pi 5 loader" ${MACHINE_CPUARCH}
 INSTALLFLAGS=	-b
 
 # The interpreter: lua, for the boot menu (on the PL011 and, with the MMU on,
-# the HDMI console).  It reads its scripts from /boot/lua on the memory disk,
-# which tools/rpiboot_image_build.sh copies from this tree, and loader.conf
-# rather than loader.rc.  The property simp was chosen for during bring-up
-# survives: if loader.lua is missing or broken, interp_lua.c prints the error,
-# cancels autoboot and leaves the prompt working.  LOADER_INTERP=simp still
-# builds the script-free loader, which reads loader.rc.
+# the HDMI console).  It reads its scripts from /boot/lua on the current
+# device, and loader.conf rather than loader.rc.  If loader.lua is missing or
+# broken, interp_lua.c prints the error, cancels autoboot and leaves the
+# prompt working.  LOADER_INTERP=simp builds the script-free loader, which
+# reads loader.rc.
 LOADER_INTERP?=	lua
 
 # Memory disk.  This is what gives the loader a filesystem without any
@@ -37,22 +34,12 @@ LOADER_INTERP?=	lua
 # script has a non-ELF path using strings(1), so it works on the raw binary.
 LOADER_MD_SUPPORT=	yes
 #
-# 20 MiB, so the image can carry a stripped kernel with ZFS compiled in
-# (15.9 MB since M4) and the cyw43455 firmware (0.6 MB).
-# rpiboot_image_build.sh passes the size it builds the image for (-m).
-#
-# This is what lets the handoff be tested with one new variable instead of
-# two: the loader has no storage driver yet, so without an embedded kernel
-# there would be nothing to boot, and wiring the SD card at the same time
-# would leave a failure ambiguous between the two.  The firmware has to be
-# here too, and preloaded by loader.rc, because cyw(4) attaches before root
-# is mounted.
-#
-# 14 MiB held the 12.45 MB kernel alone; with the 0.61 MB of firmware added,
-# makefs ran out of space, and 16 MiB followed until ZFS.  20 MiB makes the
-# loader about 21 MiB, which the firmware loads at 0x200000 and which ends
-# near 0x1650000 -- still far below the device tree at 0x4000000 and the
-# heap at 0x8000000.  The firmware FAT (51 MB) is the tighter limit.
+# 20 MiB, so that the image can carry a kernel without its symbol table
+# (about 13 MB, or 16 MB with ZFS compiled in) and the cyw43455 firmware
+# (0.6 MB), which loader.conf preloads because cyw(4) attaches before root
+# is mounted.  That makes the loader about 21 MiB, which the firmware loads
+# at 0x200000 and which ends near 0x1650000 -- far below the device tree at
+# 0x4000000 and the heap at 0x8000000.
 #
 # Must be a multiple of 512; stand/common/md.c #errors otherwise.  Changing it
 # needs a clean build: md.o takes it through CFLAGS, which make does not track.
@@ -138,7 +125,7 @@ CFLAGS+=	-I${SYSDIR}/contrib/libfdt
 
 # Freestanding, and every bit of it load-bearing at EL2 with the MMU off:
 # unaligned accesses fault because all memory is Device-nGnRnE, and CPTR_EL2
-# may trap FP/SIMD.  Both were established by the bare-metal test images.
+# may trap FP/SIMD.
 # rpi_mmu.c makes RAM Normal memory early in main(), but start.S and the
 # console probe run before that, so -mstrict-align stays.
 CFLAGS+=	-mstrict-align -mgeneral-regs-only

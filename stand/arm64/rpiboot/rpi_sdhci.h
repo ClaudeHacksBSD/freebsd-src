@@ -4,12 +4,7 @@
  * Scope is deliberately narrow: identify the card in the boot slot and read
  * 512-byte blocks from it.  No writes, no DMA, no UHS speeds, no eMMC, no
  * command queueing, no interrupts.  A loader needs to find and read a kernel;
- * everything else is the kernel's job.
- *
- * This is rpi5_modules.git loader/sdhci.[ch], which read blocks on hardware
- * as a bare-metal test image on 2026-09-20 (doc/LOADER_ZIMAGE.md, "SD block
- * reads work"), with multi-block reads added.  rpi_sd.c makes a loader disk
- * of it.
+ * everything else is the kernel's job.  rpi_sd.c makes a loader disk of it.
  *
  * WHICH CONTROLLER
  *

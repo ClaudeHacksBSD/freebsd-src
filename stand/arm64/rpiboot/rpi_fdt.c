@@ -6,8 +6,7 @@
  * whereas the VPU firmware passes its physical address in x0, which start.S
  * saves for us.
  *
- * What arrives is better than it might be, and this was measured rather than
- * hoped for (probe-k.bin, 2026-09-20):
+ * What arrives needs no work:
  *
  *   - the blob is the vendor dtb with the bcm2712d0 overlay ALREADY MERGED by
  *     the firmware -- 78,377 bytes in, 79,924 out -- so this loader does not

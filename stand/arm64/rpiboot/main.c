@@ -8,10 +8,9 @@
  * What makes this loader different from the EFI one is what it does NOT have:
  * no EFI boot services, no EFI memory map, no runtime services, no wall clock,
  * and at this stage no storage driver.  The memory it may use therefore has to
- * come from the device tree's /memory node, which was proven to be present and
- * correct on this board -- 15.99 GiB in 8 regions, patched into the tree by the
- * firmware at runtime.  That measurement is the reason this loader can exist
- * at all; see rpi5_modules.git/doc/LOADER_ZIMAGE.md.
+ * come from the device tree's /memory node, which is present and correct on
+ * this board -- on a 16 GB one, 15.99 GiB in 8 regions, patched into the tree
+ * by the firmware at runtime.  That is what makes this loader possible.
  */
 
 #include <stand.h>
@@ -32,7 +31,7 @@ extern char	_end[];
  *
  * Placed at a fixed physical address rather than immediately after _end, and
  * the reason is the device tree.  The firmware puts the blob at
- * device_tree_address, which tools/boot_config_install.sh sets to 0x4000000,
+ * device_tree_address, which config.txt sets to 0x4000000,
  * and the loader itself lives at 0x200000 and is around a megabyte with the
  * memory disk embedded.  Growing a heap up from _end would march straight into
  * the blob.  Starting at 128 MiB clears both, and stays inside the first
@@ -62,9 +61,9 @@ extern char	_end[];
  * sys/dev/psci/psci.h; SYSTEM_RESET and SYSTEM_OFF are both SMC32 calls, so
  * the 0x84 prefix rather than 0xc4.
  *
- * Note this is the ATF the VPU firmware carries, which is NOT the one the
- * EDK2 lane uses -- RPI_EFI.fd ships its own v2.10.0.  A PSCI difference
- * between the two lanes would show up here first.
+ * Note this is the ATF the VPU firmware carries, which is NOT the one an
+ * EDK2 boot uses -- RPI_EFI.fd ships its own v2.10.0.  A PSCI difference
+ * between the two would show up here first.
  */
 #define	PSCI_FNID_VERSION	0x84000000U
 #define	PSCI_FNID_SYSTEM_OFF	0x84000008U

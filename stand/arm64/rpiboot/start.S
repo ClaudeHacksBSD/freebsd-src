@@ -1,8 +1,7 @@
 /*-
  * start.S -- entry point for the Raspberry Pi 5 FreeBSD loader.
  *
- * The VPU firmware enters here per the Linux arm64 boot protocol, a contract
- * measured on this board rather than taken on faith (probe-k.bin, 2026-09-20):
+ * The VPU firmware enters here per the Linux arm64 boot protocol:
  *
  *	EL2, MMU off, caches off
  *	x0 = DTB physical address

@@ -7,7 +7,7 @@
  * firmware leaves it trained, and with the default (1) it resets PCIe2 at
  * hand-off, in which case there is no RP1 here and the loader goes without
  * USB.  What the firmware does not leave is the device tree's address
- * layout (measured, doc/LOADER_ZIMAGE.md "pciex4_reset=0"): its outbound
+ * layout: its outbound
  * window maps CPU 0x1c_0000_0000 to PCIe 0x8000_0000, and RP1's BARs sit
  * somewhere in there.  So this sets up what the kernel's bcm2712_pcib and
  * rp1pci set up, from the same device tree values (pcie@1000120000):
@@ -18,7 +18,7 @@
  *		   +0x300000 ("rp1pci0: BAR1 (peripherals): PCIe 0xc0000000
  *		   -> CPU 0x1f00000000" in every kernel boot)
  *	dma-ranges PCIe 0 -> CPU 0, 64 GiB: the firmware already maps
- *		   inbound 1:1 with pciex4_reset=0 (doc/M2_PCIE_HOST.md), so
+ *		   inbound 1:1 with pciex4_reset=0, so
  *		   a DMA address is a physical address
  *
  * The kernel resets PCIe2 at boot by default (hw.bcm2712_pcib.reset), so

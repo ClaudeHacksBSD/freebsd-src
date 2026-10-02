@@ -22,7 +22,7 @@
  * inside a reservation the firmware declares (rpi_fb_reserved()): memory
  * the kernel will keep its hands off.
  *
- * Channel order: the mailbox's pixel order is 0, "BGR", on dunn: blue,
+ * Channel order: the mailbox's pixel order is 0, "BGR", on a Pi 5: blue,
  * green, red in bytes 0-2 of a pixel, so red in bits 16-23 (x8r8g8b8).
  * The firmware says the same to Linux on the command line it puts in
  * /chosen/bootargs, "bcm2708_fb.fbswap=1", which vendor Linux's bcm2708_fb
@@ -138,7 +138,7 @@ rpi_fb_cells(const fdt32_t *p, int n)
 
 /*
  * Is [base, base + size) memory the kernel will leave alone?  Two facts,
- * both from the firmware's device tree (measured on dunn, 2026-09-30):
+ * both from the firmware's device tree:
  *
  * - it must overlap no /memory range (the first bank ends at 0x3f400000,
  *   where the framebuffer starts) -- this is what keeps the kernel off it;

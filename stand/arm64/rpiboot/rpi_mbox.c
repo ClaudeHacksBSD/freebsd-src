@@ -20,10 +20,9 @@
  * mailbox@7c013880, "brcm,bcm2835-mbox", reg = <0x7c013880 0x40>, translated
  * through /soc's ranges to PA 0x107c013880.  The property buffer is handed to
  * the VPU as a plain physical address: no 0xC0000000-style VideoCore alias.
- * The device tree implied that (the firmware node carries an empty
- * dma-ranges), and rpi5_modules.git/loader/mboxtest.bin measured it on this
- * board: four GET tags answered, and the board revision and serial matched
- * what the firmware printed on the same boot.
+ * The device tree implies that (the firmware node carries an empty
+ * dma-ranges), and it holds: GET tags are answered, and the board revision
+ * and serial match what the firmware prints on the same boot.
  *
  * The VPU is not coherent with the ARM caches, and since rpi_mmu.c turned the
  * D-cache on the buffer lives in cached RAM: mbox_property() cleans it to
@@ -153,7 +152,7 @@ rpi_mbox_property(uint32_t *buf)
 
 /*
  * A single tag.  inlen bytes of val are sent; up to vallen bytes of the reply
- * are copied back into val.  Same buffer layout as tools/vcio_test.c.
+ * are copied back into val.
  */
 int
 rpi_mbox_tag(uint32_t tag, uint32_t *val, uint32_t vallen, uint32_t inlen)

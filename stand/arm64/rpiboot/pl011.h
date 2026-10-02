@@ -136,8 +136,8 @@ void	pl011_attach(struct pl011 *sc, uint64_t base, uint32_t uartclk);
 /*
  * Read the PrimeCell peripheral ID, if it is reachable at all.
  *
- * DO NOT USE THIS AS A PRESENCE TEST ON A RASPBERRY PI 5.  Measured on
- * hardware 2026-09-20: PERIPHID0..3 all read 0x00000000 on a UART that was
+ * DO NOT USE THIS AS A PRESENCE TEST ON A RASPBERRY PI 5.  There,
+ * PERIPHID0..3 all read 0x00000000 on a UART that is
  * demonstrably working and printing.  The reason is in the device tree --
  *
  *	reg = <0x7d001000 0x200>;
@@ -176,8 +176,8 @@ int	pl011_periphid(const struct pl011 *sc, uint32_t *out);
  *
  * Only call this when the inherited configuration is unusable.  The firmware
  * has already set this UART up and is printing through it when we are
- * entered, so the safest console is the one we do not reconfigure -- that is
- * what probe-k.bin relied on, and it worked on the first boot.  Reprogramming
+ * entered, so the safest console is the one we do not reconfigure.
+ * Reprogramming
  * means a window with the UART disabled, and a wrong uartclk turns a working
  * console into silence, which is the one failure that cannot report itself.
  *

@@ -4,10 +4,6 @@
  * Polled, PIO only.  See rpi_sdhci.h for which controller, the address
  * translation, the base clock, and why DMA and the cfg window are mostly
  * avoided.
- *
- * The single-block path and the initialisation are rpi5_modules.git
- * loader/sdhci.c as it ran on hardware; the multi-block read and the
- * recovery after a failed transfer are new here.
  */
 
 #include <stand.h>
@@ -346,7 +342,7 @@ lba_to_arg(const struct sdhci *sc, uint64_t lba, uint32_t count,
 	return (0);
 }
 
-/* CMD17, as it ran in the bare-metal test. */
+/* CMD17: one block. */
 static int
 sd_read_single(struct sdhci *sc, uint64_t lba, uint8_t *buf)
 {
@@ -623,8 +619,8 @@ sd_cid_product(const struct sdhci *sc, char out[6])
 	/*
 	 * The controller's long response holds CID[127:8] in bits [119:0].
 	 * PNM is CID[103:64], so four characters come out of cid[2] and the
-	 * fifth is the top byte of cid[1].  Checked against the CID the
-	 * firmware printed for dunn's card, whose product name is "SD32G".
+	 * fifth is the top byte of cid[1].  This agrees with the CID the
+	 * firmware prints for a card whose product name is "SD32G".
 	 */
 	out[0] = (char)((sc->cid[2] >> 24) & 0xff);
 	out[1] = (char)((sc->cid[2] >> 16) & 0xff);

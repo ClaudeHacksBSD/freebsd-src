@@ -103,7 +103,7 @@ extern char	rpi_exception_vectors[];	/* rpi_mmu_asm.S */
 #define	HCR_E2H		(1UL << 34)
 
 /*
- * Level-2 tables.  dunn needs two at most: the first gigabyte (the loader,
+ * Level-2 tables.  A Pi 5 needs two at most: the first gigabyte (the loader,
  * and /memory's first bank ending at 0x3f400000 under the framebuffer) and
  * any gigabyte where a /memory range starts or ends off a gigabyte boundary.
  * In BSS, which start.S zeroes and image_size covers.

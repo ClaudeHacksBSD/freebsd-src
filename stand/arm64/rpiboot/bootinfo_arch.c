@@ -27,8 +27,6 @@
  *	six further 2 GiB regions to 0x0380000000
  *	total 0x3ff400000 = 15.99 GiB
  *
- * See rpi5_modules.git/doc/LOADER_ZIMAGE.md for how that was established.
- *
  * So this being empty is a positive result rather than a stub.  If a kernel
  * ever panics for want of memory regions, the fault is in the device tree
  * reaching it or in MODINFOMD_DTBP, not here.
