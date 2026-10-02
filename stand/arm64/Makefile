@@ -1,5 +1,7 @@
 NO_OBJ=t
 
-SUBDIR+=	rpiboot
+.include <src.opts.mk>
+
+SUBDIR.${MK_LOADER_RPIBOOT}+=	rpiboot
 
 .include <bsd.subdir.mk>
