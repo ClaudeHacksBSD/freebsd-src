@@ -1,0 +1,248 @@
+.\"
+.\" SPDX-License-Identifier: BSD-2-Clause
+.\"
+.\" Copyright (c) 2026 Jeremy McMillan
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd October 2, 2026
+.Dt LOADER.RPIBOOT 8 arm64
+.Os
+.Sh NAME
+.Nm loader.rpiboot
+.Nd Raspberry Pi 5 kernel loader
+.Sh DESCRIPTION
+.Nm
+is the
+.Fx
+loader for the Raspberry Pi 5, started directly by the board's firmware
+with no U-Boot and no EFI firmware in the boot path.
+The firmware loads
+.Pa rpiboot.bin
+from its FAT boot partition as though it were a Linux arm64 kernel image,
+as named by the
+.Cm kernel
+line of
+.Pa config.txt ,
+and enters it at exception level 2 with the MMU off and the physical
+address of its device tree in register x0.
+There is no EFI memory map; memory is what the
+.Pa /memory
+node of that tree lists.
+The kernel is given the same device tree, with any overlays the firmware
+applied.
+.Pp
+The interpreter is
+.Xr loader_lua 8 :
+.Nm
+reads
+.Xr loader.conf 5
+and shows the boot menu.
+.Ss Consoles
+.Bl -tag -width "vidconsole"
+.It Cm uart
+The SoC PL011 on the three-pin debug connector, 115200 baud, 8 data bits,
+no parity, 1 stop bit, as the firmware configured it.
+Always present, and first.
+.It Cm vidconsole
+The HDMI display, on the framebuffer the firmware set up, when a display
+was connected at power-on.
+Its keyboard is a USB keyboard in HID boot protocol plugged directly into
+one of the board's ports, not through a hub.
+The USB controllers are in the RP1 chip behind PCIe, which
+.Nm
+can only reach when the firmware leaves that link up:
+.Pa config.txt
+must say
+.Cm pciex4_reset=0 .
+.El
+.Ss Devices
+.Bl -tag -width "disk0:"
+.It Li md0:\&
+A memory disk inside the loader image itself, available with no storage
+driver.
+The space is reserved when the loader is built
+.Pq Va MD_IMAGE_SIZE , No 20 MiB by default
+and a bare UFS image, such as
+.Xr makefs 8
+produces, is written into it afterwards.
+A loader installed without one has an empty
+.Li md0:\& .
+.It Li disk0:\&
+The SD card in the board's slot, read through the SoC's own SDHCI
+controller.
+MBR, GPT and BSD-label partitions are found, and UFS and FAT file systems
+can be read:
+.Li disk0s1:\&
+is usually the firmware's FAT partition.
+The card is read-only to the loader.
+.El
+.Pp
+There is no network, no ZFS, and no driver for NVMe or USB storage.
+A kernel whose root file system is on such a device is still loaded from
+the card or the memory disk, and finds its root through
+.Va vfs.root.mountfrom .
+.Ss Choosing where to boot from
+At startup
+.Nm
+reads
+.Pa loader.env
+from the first partition of the card, if it is a FAT file system.
+The file holds
+.Ar name Ns = Ns Ar value
+words separated by spaces or newlines, which become loader environment
+variables.
+If it sets
+.Va rootdev ,
+for example
+.Bd -literal -offset indent
+rootdev=disk0s2a:
+.Ed
+.Pp
+and that file system has
+.Pa /boot/lua/loader.lua ,
+it becomes the current device: the loader's scripts,
+.Pa loader.conf ,
+the kernel and its modules are all read from it.
+Otherwise the current device is
+.Li md0:\& .
+.Pp
+A variable set in
+.Pa loader.env
+is overridden by a line for the same variable in
+.Pa /boot/defaults/loader.conf
+or
+.Pa /boot/loader.conf ,
+so settings other than
+.Va rootdev
+belong in
+.Pa loader.conf .
+.Pp
+The firmware can be asked to use
+.Pa tryboot.txt
+in place of
+.Pa config.txt
+for one boot.
+On such a boot
+.Nm
+reads
+.Pa tryboot.env
+before
+.Pa loader.env ,
+so that the trial boot can use another file system.
+.Ss Memory layout
+.Bl -tag -width "0x10000000-0x18000000" -compact
+.It 0x00200000
+.Nm
+itself, with its memory disk
+.It 0x04000000
+device tree; set
+.Cm device_tree_address
+in
+.Pa config.txt
+so that it is clear of the loader image
+.It 0x08000000
+loader heap, 48 MiB
+.It 0x10000000-0x18000000
+kernel and modules as they are assembled
+.El
+.Ss Commands
+In addition to the common loader commands,
+.Nm
+provides:
+.Bl -tag -width "untryboot"
+.It Ic fbinfo
+Show the firmware's framebuffer.
+.It Ic fbtest
+Time the set-up of the framebuffer console.
+.It Ic mmu
+Show the loader's MMU and cache state and its memory map.
+.It Ic peek
+Read 32-bit device registers by physical address.
+.It Ic poweroff
+Power the board off, through PSCI.
+.It Ic reboot
+Reset the board, through PSCI.
+.It Ic sdinfo
+Show the SD card and its controller, or why there is no
+.Li disk0:\& .
+.It Ic tryboot Op Fl n
+Ask the firmware to read
+.Pa tryboot.txt
+for the next boot only, then reset.
+With
+.Fl n
+the request is made without resetting.
+.It Ic untryboot
+Withdraw that request.
+.It Ic usbinfo
+Show the USB controllers and what is on each port, or why there is no
+keyboard.
+.It Ic vcinfo
+Show the firmware and board revisions, the SoC temperature, and which
+configuration file this boot used.
+.El
+.Sh FILES
+.Bl -tag -width "/boot/rpiboot.bin" -compact
+.It Pa /boot/rpiboot.bin
+the loader as installed; copy it to the firmware's FAT partition
+.El
+.Pp
+On the firmware's FAT partition:
+.Bl -tag -width "/boot/rpiboot.bin" -compact
+.It Pa config.txt
+the firmware's configuration
+.It Pa loader.env
+loader variables read before the scripts, notably
+.Va rootdev
+.It Pa tryboot.env
+the same, for a boot from
+.Pa tryboot.txt
+.El
+.Sh EXAMPLES
+The lines of
+.Pa config.txt
+that start the loader:
+.Bd -literal -offset indent
+kernel=rpiboot.bin
+os_check=0
+device_tree_address=0x4000000
+device_tree_end=0x4100000
+pciex4_reset=0
+.Ed
+.Sh SEE ALSO
+.Xr loader.conf 5 ,
+.Xr loader 8 ,
+.Xr loader_lua 8 ,
+.Xr makefs 8
+.Sh HISTORY
+.Nm
+first appeared in
+.Fx 16.0 .
+.Sh CAVEATS
+Nothing controls the board's cooling fan while the loader is running.
+.Pp
+.Nm
+does not write to the card, so features that have the loader update a
+file, such as
+.Xr nextboot 8 ,
+do not work.
