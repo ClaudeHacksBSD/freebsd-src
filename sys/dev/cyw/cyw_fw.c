@@ -22,10 +22,10 @@
  *     on the dedicated firmware taskqueue (which has filesystem context),
  *     never on this attach thread.
  *
- * This replaces an earlier vn_open()/vn_rdwr() reader that panicked when the
- * driver was preloaded: the SDIO discovery taskqueue has no fd_cdir/fd_rdir,
- * so namei()/cache_fplookup() faulted (far=0x4) under Giant.  See
- * doc/ for the firmware delivery details and the loader.conf preload block.
+ * The blob is not read with vn_open()/vn_rdwr() from the attach thread:
+ * the SDIO discovery taskqueue has no fd_cdir/fd_rdir, so
+ * namei()/cache_fplookup() fault there.  cyw(4) gives the loader.conf
+ * preload block.
  */
 
 #include <sys/param.h>
@@ -323,10 +323,9 @@ cyw_f2_bringup(struct cyw_softc *sc)
 	/*
 	 * Watermarks and MES busy control.  These are Linux's CY_435X values.
 	 * Linux itself takes its default case for this part (F1 device ID
-	 * 0x4345: DEFAULT_F2_WATERMARK, no F2WM_ENAB, no MESBUSYCTRL).  Using
-	 * that at 50 MHz on 2026-09-28 did not stop the first IOCTL writes
-	 * failing, and one of two boots wedged the bus, so these stay until
-	 * the cause is known (rpi5_modules.git doc/cyw43455.md).
+	 * 0x4345: DEFAULT_F2_WATERMARK, no F2WM_ENAB, no MESBUSYCTRL).  With
+	 * that at 50 MHz the first IOCTL writes still fail and the bus can
+	 * wedge, so these values are used instead; the cause is not known.
 	 */
 	w_err = 0;
 	sdio_write_1(sc->f1, SBSDIO_WATERMARK, CYW_F2_WATERMARK, &w_err);

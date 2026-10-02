@@ -1,5 +1,5 @@
 /*
- * cyw_scan.c — escan implementation (Milestone 2.4)
+ * cyw_scan.c — escan implementation
  *
  * cyw_do_escan()        — build brcmf_escan_params_le, issue "escan" IOVAR
  * cyw_abort_escan()     — send escan ABORT action
@@ -9,7 +9,7 @@
  * The CYW43455 firmware uses D11N chanspec encoding.
  * scan_start_task / scan_end_task run on sc->scan_tq (separate from rx_tq).
  *
- * Reference: /Users/aphor/src/freebsd-brcmfmac.git/src/scan.c
+ * Reference: freebsd-brcmfmac src/scan.c
  */
 
 #include <sys/param.h>

@@ -4,8 +4,6 @@
  * Attaches to the sdiob(4) newbus bridge on the WiFi SDIO slot.  The sdiob
  * driver enumerates one child per SDIO function; this driver claims function 1
  * (the backplane function) and locates function 2 (WLAN data) as a sibling.
- *
- * Milestone 1 goal: load firmware, read firmware version string via IOVAR.
  */
 
 #include <sys/param.h>
@@ -34,7 +32,6 @@ TUNABLE_INT("hw.cyw.debug", &cyw_debug_default);
  * /boot/loader.conf (or `kenv hw.cyw.probe_fwsup=1` before kldload)
  * to query the firmware's "sup_wpa" iovar at attach time.  Logs GET +
  * SET(1) + SET(0-restore) returns.  No effect on the join path.
- * See plan floofy-whistling-scott.md Step 1.
  */
 int cyw_probe_fwsup_tunable = 0;
 TUNABLE_INT("hw.cyw.probe_fwsup", &cyw_probe_fwsup_tunable);
@@ -329,8 +326,8 @@ cyw_attach(device_t dev)
 	 * The firmware bring-up runs on a taskqueue of our own, not here.
 	 * sdiob(4) attaches us from its discovery task on taskqueue_thread,
 	 * and sdda(4) initializes the SD card from that same single thread:
-	 * a bring-up that stalls in an SDIO transfer used to stall the root
-	 * file system with it, and a slow one delayed it (cyw43455.md).
+	 * a bring-up that stalls in an SDIO transfer here would stall the root
+	 * file system with it, and a slow one would delay it.
 	 * Linux also brings the chip up asynchronously, in
 	 * brcmf_sdio_firmware_callback() after request_firmware_nowait().
 	 */

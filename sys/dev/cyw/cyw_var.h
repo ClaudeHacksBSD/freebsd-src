@@ -3,7 +3,7 @@
  *
  * The CYW43455 is a Cypress/Broadcom FullMAC 802.11ac + BT 5.0 combo chip
  * communicating via SDIO (WLAN) and UART HCI (Bluetooth).  This driver
- * covers the WLAN SDIO path only; Bluetooth is a separate milestone.
+ * covers the WLAN SDIO path only; Bluetooth is not supported.
  *
  * SDIO function layout:
  *   F0 — Standard CIA (vendor 0x02d0, not directly driven here)
@@ -47,7 +47,7 @@
  * Chip address map (BCM43455 / CYW43455)
  *
  * These are fixed for this chip family; an EROM scan would derive them
- * dynamically, which we defer to a later milestone.
+ * dynamically, which this driver does not do.
  * ------------------------------------------------------------------------- */
 #define CYW_SI_ENUM_BASE		0x18000000	/* ChipCommon / EROM base */
 #define CYW_CHIPCOMMON_ID_OFF		0x00		/* chip ID register offset */
@@ -166,7 +166,7 @@
 
 /* -------------------------------------------------------------------------
  * BCMA EROM (Enumeration ROM) — read from ChipCommon EROMPTR to locate cores
- * Matches /usr/src/sys/dev/bhnd/bcma/bcma_eromreg.h
+ * Matches sys/dev/bhnd/bcma/bcma_eromreg.h
  * ------------------------------------------------------------------------- */
 #define CHIPC_EROMPTR			0xfc	/* ChipCommon offset: EROM base addr */
 
@@ -312,7 +312,7 @@ struct cyw_bcdc_hdr {
 /* -------------------------------------------------------------------------
  * Firmware event codes (fweh.h BRCMF_E_*)
  * Only the codes we subscribe to are listed here; add others when needed.
- * Reference: /usr/src/sys/contrib/dev/broadcom/brcm80211/brcmfmac/fweh.h
+ * Reference: sys/contrib/dev/broadcom/brcm80211/brcmfmac/fweh.h
  * ------------------------------------------------------------------------- */
 #define CYW_E_SET_SSID		0	/* join/leave result */
 #define CYW_E_JOIN		1	/* join completed */
@@ -476,10 +476,10 @@ struct cyw_join_params {
  * use to keep the wire format identical to Linux's normal operation.
  *
  * Naturally aligned, as in Linux: 3 pad bytes follow scan_type, so the
- * struct is 20 bytes.  It used to be __packed (17 bytes), which moved
- * assoc_le 3 bytes early.  The firmware then read chanspec_num from the
- * chanspec itself (e.g. 0x00e32a00) and rejected every "join" with
- * BCME_BUFTOOSHORT (-14).  cyw_cfg.c asserts the Linux offsets.
+ * struct is 20 bytes.  __packed (17 bytes) would move assoc_le 3 bytes
+ * early: the firmware then reads chanspec_num from the chanspec itself
+ * (e.g. 0x00e32a00) and rejects every "join" with BCME_BUFTOOSHORT
+ * (-14).  cyw_cfg.c asserts the Linux offsets.
  */
 struct cyw_join_scan_params_le {
 	uint8_t		scan_type;	/* 0 = active (default) */

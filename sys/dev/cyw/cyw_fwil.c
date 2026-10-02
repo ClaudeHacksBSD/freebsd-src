@@ -10,7 +10,7 @@
  * response before returning.  The callout in cyw_sdpcm.c does not run
  * during attach (started after cyw_fw_download), so there is no RX race.
  *
- * Reference: /usr/src/sys/contrib/dev/broadcom/brcm80211/brcmfmac/fwil.c
+ * Reference: sys/contrib/dev/broadcom/brcm80211/brcmfmac/fwil.c
  */
 
 #include <sys/param.h>
@@ -263,10 +263,9 @@ cyw_tx_eio_diag(struct cyw_softc *sc, size_t txlen, int err, const char *tag)
 	/*
 	 * A failed IOCTL write.  At 50 MHz the first ones after firmware
 	 * download sometimes fail; record the chip's power and clock state and
-	 * how long after FWREADY this was (cyw43455.md, "F2 writes fail right
-	 * after firmware download").  Called after cyw_txfail(), and limited
-	 * to CMD52 reads: a CMD53 backplane read here (INTSTATUS) preceded the
-	 * two attaches that wedged the SDIO bus.
+	 * how long after FWREADY this was.  Called after cyw_txfail(), and
+	 * limited to CMD52 reads: a CMD53 backplane read here (INTSTATUS) can
+	 * wedge the SDIO bus.
 	 */
 	sleepcsr = sdio_read_1(sc->f1, SBSDIO_FUNC1_SLEEPCSR, &e1);
 	clkcsr = sdio_read_1(sc->f1, SBSDIO_FUNC1_CHIPCLKCSR, &e2);
@@ -293,7 +292,7 @@ cyw_tx_eio_diag(struct cyw_softc *sc, size_t txlen, int err, const char *tag)
  * most once per second to avoid flooding dmesg under sustained failure.
  *
  * Classification rules: SLEEPCSR !KSO → A; RBC non-zero + recurring →
- * B; INTSTAT still set + self-clearing → C.  See doc/cyw43455.md §16.
+ * B; INTSTAT still set + self-clearing → C.
  * ------------------------------------------------------------------------- */
 void
 cyw_rx_eio_diag(struct cyw_softc *sc, size_t rdlen, int err, const char *tag)
@@ -516,7 +515,7 @@ cyw_fil_txrx(struct cyw_softc *sc, uint32_t cmd, uint32_t bcdc_flags,
 			 * Terminate the failed frame as Linux does, then send it
 			 * once more.  At 50 MHz the first writes after firmware
 			 * download sometimes fail, and losing them loses
-			 * bus:txglom=0 and roam_off (cyw43455.md).  Recovery
+			 * bus:txglom=0 and roam_off.  Recovery
 			 * comes first, as in Linux; the diagnostic reads after it.
 			 */
 			cyw_txfail(sc);

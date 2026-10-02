@@ -1,5 +1,5 @@
 /*
- * cyw_events.c — firmware event dispatcher (Milestone 2.4a)
+ * cyw_events.c — firmware event dispatcher
  *
  * SDPCM channel 1 (CYW_SDPCM_CHAN_EVENT) frame layout:
  *
@@ -19,9 +19,9 @@
  *
  * cyw_event_attach() subscribes to events via the "event_msgs" IOVAR.
  * cyw_event_dispatch() is called by cyw_sdpcm_task() on CHAN_EVENT frames.
- * cyw_event_register() lets future milestones install per-code handlers.
+ * cyw_event_register() installs per-code handlers.
  *
- * Reference: /usr/src/sys/contrib/dev/broadcom/brcm80211/brcmfmac/fweh.{c,h}
+ * Reference: sys/contrib/dev/broadcom/brcm80211/brcmfmac/fweh.{c,h}
  */
 
 #include <sys/param.h>
@@ -192,9 +192,9 @@ cyw_event_attach(struct cyw_softc *sc)
 /* -------------------------------------------------------------------------
  * cyw_event_register / cyw_event_unregister
  *
- * Register or clear a per-code handler.  Called by future milestones:
- *   Milestone 2.3 (scan):  registers CYW_E_ESCAN_RESULT handler
- *   Milestone 2.5 (assoc): registers CYW_E_LINK, CYW_E_SET_SSID, etc.
+ * Register or clear a per-code handler.  Used by:
+ *   scan:        the CYW_E_ESCAN_RESULT handler
+ *   association: CYW_E_LINK, CYW_E_SET_SSID, etc.
  *
  * Safe to call from any context; handler registration is serialised by
  * sc->mtx.  Handlers themselves are called from cyw_sdpcm_task (process

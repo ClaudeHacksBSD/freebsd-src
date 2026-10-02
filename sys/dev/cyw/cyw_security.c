@@ -9,7 +9,7 @@
  *
  * Reference: freebsd-brcmfmac/src/security.c and Linux brcmfmac cfg80211.c
  *
- * Notes for CYW43455 firmware 7.45.x (per TODO.md and reference notes):
+ * Notes for CYW43455 firmware 7.45.x:
  *   - sup_wpa=1  → BCME_BADARG  (do NOT set internal supplicant)
  *   - WPA2_AUTH_PSK_SHA256 (0x8000) → unsupported, do not include
  *   - WLC_SET_AUTH=0 (open) is required; firmware handles WPA2 4-way

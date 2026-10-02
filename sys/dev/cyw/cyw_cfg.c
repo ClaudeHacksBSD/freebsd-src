@@ -1,16 +1,11 @@
 /*
  * cyw_cfg.c — net80211 integration layer
  *
- * Reads the chip MAC address, attaches to net80211, and provides the
- * minimum set of ic callbacks.  This milestone wires the driver into the
- * net80211 framework so the interface appears in ifconfig output.
+ * Reads the chip MAC address, attaches to net80211, and provides the ic
+ * and vap callbacks: scanning (escan), association through iv_newstate,
+ * key installation, and the transmit path.
  *
- * Milestones for remaining callbacks:
- *   scan_start / scan_end   — Milestone 2.3 (escan)
- *   iv_newstate association — Milestone 2.4/2.5
- *   ic_transmit data path   — Milestone 2.6
- *
- * Reference: /usr/src/sys/dev/bwn/if_bwn.c (SoftMAC FullMAC pattern)
+ * Reference: sys/dev/bwn/if_bwn.c (SoftMAC FullMAC pattern)
  */
 
 #include <sys/param.h>
@@ -155,7 +150,7 @@ cyw_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 		/*
 		 * Park the radio on the target chanspec BEFORE WLC_SET_SSID.
 		 *
-		 * Observation (2026-05-25): after escan completes the firmware
+		 * After escan completes the firmware
 		 * leaves the radio on the last scanned channel — typically a
 		 * 5 GHz chan (36, 42, ...) when scanning all bands.  When we
 		 * then issue WLC_SET_SSID with chanspec_list[0] set to the
@@ -261,8 +256,8 @@ cyw_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 		/*
 		 * WLC_SET_WSEC_PMK is intentionally NOT issued.  FW 7.45.265
 		 * on CYW43455 does not implement the firmware-supplicant
-		 * iovar `sup_wpa` (returns BCME_UNSUPPORTED, see
-		 * doc/cyw43455.md §16.8), so the PMK is owned by
+		 * iovar `sup_wpa` (returns BCME_UNSUPPORTED), so the PMK is
+		 * owned by
 		 * wpa_supplicant on the host and the firmware never needs
 		 * (or expects) it.  Mirrors Linux brcmfmac, which only
 		 * calls brcmf_set_pmk inside `if (use_fwsup != NONE)`
@@ -282,9 +277,8 @@ cyw_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 		 * The embedded scan_le block tells firmware to actively probe
 		 * for SSID/BSSID on the supplied chanspec _during_ the join,
 		 * so the firmware's internal BSS cache no longer has to be
-		 * hot.  This fixes the E_SET_SSID status=3 (NO_NETWORKS) we
-		 * were getting from WLC_SET_SSID after wpa_supplicant-driven
-		 * scans — see doc/cyw43455.md §16.4 for the full analysis.
+		 * hot.  Without it WLC_SET_SSID fails with E_SET_SSID status=3
+		 * (NO_NETWORKS) after wpa_supplicant-driven scans.
 		 *
 		 * scan_le fields are set to -1 sentinels, the documented
 		 * "use firmware defaults" values (Linux cfg80211.c:2536-2542).
@@ -1296,13 +1290,12 @@ cyw_wme_update(struct ieee80211com *ic __unused)
 }
 
 /* -------------------------------------------------------------------------
- * ic_raw_xmit — instrumented to confirm whether wpa_supplicant's EAPOL
- * M2 is being routed through here instead of ic_transmit.
+ * ic_raw_xmit — counts and logs what arrives here.
  *
- * Previously a stub that silently dropped every frame.  If this fires
- * during a 4-way handshake while tx_data_frames stays at 0, we've found
- * the EAPOL TX leak: the BPF / l2_packet path FreeBSD's wpa_supplicant
- * (-Dbsd) uses lands in ic_raw_xmit, not ic_transmit, and we drop it.
+ * If this fires during a 4-way handshake while tx_data_frames stays at 0,
+ * wpa_supplicant's EAPOL M2 is being routed here instead of ic_transmit:
+ * the BPF / l2_packet path FreeBSD's wpa_supplicant (-Dbsd) uses would
+ * then land in ic_raw_xmit, where the frame is dropped.
  * ------------------------------------------------------------------------- */
 static int
 cyw_raw_xmit(struct ieee80211_node *ni, struct mbuf *m,
@@ -1438,7 +1431,7 @@ cyw_cfg_attach(struct cyw_softc *sc)
 		return (err);
 	}
 
-	/* Register E_ESCAN_RESULT handler (Milestone 2.4) */
+	/* Register E_ESCAN_RESULT handler */
 	err = cyw_scan_attach(sc);
 	if (err != 0) {
 		ieee80211_ifdetach(ic);

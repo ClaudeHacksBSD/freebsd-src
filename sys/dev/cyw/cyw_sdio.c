@@ -7,8 +7,7 @@
  *
  * F2 carries SDPCM-framed WLAN packets and is accessed via extended writes.
  *
- * Locking: Milestone 1 has no concurrent access paths (no interrupts, no
- * ioctl, single callout).  All locking is deferred to Milestone 2.  The
+ * Locking: the functions here take no lock of their own.  The
  * SDIO bus methods internally acquire their own CAM SIM lock; holding our
  * private mutex while calling them would violate lock order (bus framework
  * holds Giant during device_attach which establishes Giant > sc->mtx, but
@@ -369,7 +368,7 @@ cyw_arm_release(struct cyw_softc *sc, uint32_t rstvec)
  * We walk it to find the core with ID BHND_COREID_SDIOD (0x829) and return
  * the base address of its first DEVICE-type slave port region.
  *
- * Reference: /usr/src/sys/dev/bhnd/bcma/bcma_eromreg.h and bcma_erom.c.
+ * Reference: sys/dev/bhnd/bcma/bcma_eromreg.h and bcma_erom.c.
  * ------------------------------------------------------------------------- */
 static uint32_t
 cyw_erom_find_sdio_core_base(struct cyw_softc *sc)
@@ -571,18 +570,14 @@ cyw_sdio_attach(struct cyw_softc *sc)
 	 * F2 block size, through sdio_set_block_size() so that the card's
 	 * FBR register and sdiob's cur_blksize agree.
 	 *
-	 * This used to write the FBR bytes directly through F0.  The card
-	 * then framed F2 blocks of CYW_F2_BLKSIZE while sdiob, never told,
-	 * kept cur_blksize at the CIS maximum of 512 and issued every F2
+	 * Writing the FBR bytes directly through F0 is not enough.  The card
+	 * then frames F2 blocks of CYW_F2_BLKSIZE while sdiob, never told,
+	 * keeps cur_blksize at the CIS maximum of 512 and issues every F2
 	 * transfer of 512 bytes or more as block-mode CMD53 with 512-byte
-	 * blocks.  The card lost step after its first block and the host
-	 * reported DATA_TIMEOUT together with the command response
-	 * (INT_STATUS 0x108001).  That was the whole of "block-mode CMD53
-	 * fails on this hardware": frames needing a block-mode F2 write
-	 * never left, and RX and the CLM upload were cut into byte-mode
-	 * chunks to avoid it.  F1 was never affected because it has always
-	 * been set with sdio_set_block_size().  Diagnosis in
-	 * rpi5_modules.git doc/cyw43455.md section 17.
+	 * blocks.  The card loses step after its first block and the host
+	 * reports DATA_TIMEOUT together with the command response
+	 * (INT_STATUS 0x108001), which looks like block-mode CMD53 failing
+	 * on this hardware.  F1 is set the same way.
 	 */
 	err = sdio_set_block_size(sc->f2, CYW_F2_BLKSIZE);
 	if (err) {
@@ -601,7 +596,7 @@ cyw_sdio_attach(struct cyw_softc *sc)
 }
 
 /* -------------------------------------------------------------------------
- * cyw_sdio_detach — deassert chip (minimal cleanup for Milestone 1)
+ * cyw_sdio_detach — deassert chip
  * ------------------------------------------------------------------------- */
 void
 cyw_sdio_detach(struct cyw_softc *sc)
