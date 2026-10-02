@@ -1,7 +1,7 @@
 /*-
  * SPDX-License-Identifier: BSD-3-Clause
  *
- * Copyright (c) 2026 FreeBSD Contributors
+ * Copyright (c) 2026 Jeremy McMillan
  * All rights reserved.
  *
  * brcmstb_gpio -- the Broadcom STB GPIO block ("brcm,brcmstb-gpio"), as used

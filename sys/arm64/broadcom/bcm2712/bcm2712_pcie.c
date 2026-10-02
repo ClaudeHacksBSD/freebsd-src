@@ -1,7 +1,7 @@
 /*-
  * SPDX-License-Identifier: BSD-3-Clause
  *
- * Copyright (c) 2025 FreeBSD Contributors
+ * Copyright (c) 2025 Jeremy McMillan
  * All rights reserved.
  *
  * bcm2712_pcie — BCM2712 PCIe2→RP1 interrupt router

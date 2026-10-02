@@ -1,7 +1,7 @@
 /*-
  * SPDX-License-Identifier: BSD-3-Clause
  *
- * Copyright (c) 2025 FreeBSD Contributors
+ * Copyright (c) 2025 Jeremy McMillan
  * All rights reserved.
  *
  * RP1 Ethernet (Cadence GEM_GXL 1p09) - hardware constants and softc

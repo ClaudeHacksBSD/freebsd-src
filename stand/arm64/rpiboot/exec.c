@@ -1,7 +1,7 @@
 /*-
  * SPDX-License-Identifier: BSD-3-Clause AND BSD-2-Clause
  *
- * Copyright (c) 2026 Jeremy McMillan
+ * Copyright (c) 2026 FreeBSD Contributors
  *
  * Adapted from stand/efi/loader/arch/arm64/exec.c, which carries this
  * notice:

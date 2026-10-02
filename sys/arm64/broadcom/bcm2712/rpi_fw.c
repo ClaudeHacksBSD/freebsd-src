@@ -1,7 +1,7 @@
 /*-
  * SPDX-License-Identifier: BSD-3-Clause
  *
- * Copyright (c) 2026 FreeBSD Contributors
+ * Copyright (c) 2026 Jeremy McMillan
  * All rights reserved.
  *
  * rpi_fw -- the Raspberry Pi 5 VPU property mailbox, and TryBoot from the OS.

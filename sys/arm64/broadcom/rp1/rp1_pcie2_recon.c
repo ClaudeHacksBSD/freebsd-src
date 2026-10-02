@@ -1,7 +1,7 @@
 /*-
  * SPDX-License-Identifier: BSD-3-Clause
  *
- * Copyright (c) 2025 FreeBSD Contributors
+ * Copyright (c) 2025 Jeremy McMillan
  * All rights reserved.
  *
  * rp1_pcie2_recon — PCIe2 host controller diagnostics

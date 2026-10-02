@@ -1,7 +1,7 @@
 /*-
  * SPDX-License-Identifier: BSD-3-Clause
  *
- * Copyright (c) 2026 FreeBSD Contributors
+ * Copyright (c) 2026 Jeremy McMillan
  *
  * bcm2712_mip -- the BCM2712 MSI-X Interrupt Peripheral (brcm,bcm2712-mip).
  *

@@ -1,7 +1,7 @@
 /*-
  * SPDX-License-Identifier: BSD-3-Clause
  *
- * Copyright (c) 2026 FreeBSD Contributors
+ * Copyright (c) 2026 Jeremy McMillan
  * All rights reserved.
  *
  * bcm2712_pinctrl -- pin function and pull configuration for the BCM2712 D0

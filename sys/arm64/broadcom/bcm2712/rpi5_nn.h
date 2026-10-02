@@ -1,7 +1,7 @@
 /*-
  * SPDX-License-Identifier: BSD-3-Clause
  *
- * Copyright (c) 2026 FreeBSD Contributors
+ * Copyright (c) 2026 Jeremy McMillan
  *
  * Fixed-point multilayer perceptron for the Raspberry Pi 5 fan controller.
  *
