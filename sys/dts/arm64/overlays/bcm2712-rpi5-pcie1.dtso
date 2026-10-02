@@ -1,0 +1,78 @@
+// SPDX-License-Identifier: BSD-2-Clause
+/*
+ * Raspberry Pi 5: the external PCIe connector's root complex (pcie1,
+ * PCIe x1, usually an NVMe) with RAM mapped 1:1 for DMA.
+ *
+ * The Raspberry Pi firmware applies this overlay to the device tree it
+ * hands over when the .dtbo is in the overlays/ directory of its boot
+ * partition and config.txt names it (dtoverlay=).  The layout is that of
+ * bcm2712-rpi5-pcie2, for the same reasons; see there for why the RAM is
+ * reserved.
+ *
+ * Changes two properties of /axi/pcie@1000110000 (&pcie1), and adds one
+ * node under /reserved-memory:
+ *
+ *   dma-ranges   PCIe 0 -> CPU 0, 64 GB (1:1), plus the MIP MSI doorbell
+ *                entry unchanged.  Drops the vendor's RAM window at PCIe
+ *                0x10_0000_0000.
+ *   ranges       One 32-bit window: PCIe 0xc000_0000 -> CPU
+ *                0x1b_c000_0000, 16 MB (was PCIe 0x8000_0000 -> CPU
+ *                0x1b_8000_0000, 2 GB, plus a 64-bit prefetchable window
+ *                PCIe 0x4_0000_0000 -> CPU 0x18_0000_0000, 14 GB).
+ *   /reserved-memory/freebsd-pcie-mem32@c0000000
+ *                CPU 0xc000_0000, 16 MB, no-map: the RAM that window
+ *                shadows.  The same node as bcm2712-rpi5-pcie2's, so that
+ *                each overlay is safe alone; applied together, they merge.
+ *
+ * The window keeps the vendor's CPU = 0x1b_0000_0000 + PCIe offset, and
+ * sits inside pcie1's CPU aperture (0x18_0000_0000-0x1b_ffff_ffff).  It
+ * must be 32-bit: an NVMe controller's registers are a non-prefetchable
+ * BAR, and a bridge's non-prefetchable window is 32-bit only.  So it
+ * shadows RAM at CPU 0xc000_0000 as pcie2's does, and the reservation keeps
+ * the kernel from putting anything there.
+ *
+ * 16 MB: an NVMe controller needs one 1 MB bridge window for a BAR of a
+ * few kilobytes.  A card whose 32-bit BARs need more fails to get them at
+ * attach.  Grow this window, bcm2712-rpi5-pcie2's and the reservation
+ * together.
+ *
+ * bcm2712_pcib does not release PERST# on a controller it brings up from
+ * reset unless RAM is mapped 1:1, so without this overlay a device on the
+ * connector is left in reset.
+ */
+
+/dts-v1/;
+/plugin/;
+
+/ {
+	compatible = "brcm,bcm2712";
+
+	fragment@0 {
+		target = <&pcie1>;
+		__overlay__ {
+			#address-cells = <3>;
+			#size-cells = <2>;
+
+			/* 32-bit MEM: PCIe 0xc0000000 -> CPU 0x1bc0000000, 16 MB */
+			ranges =
+			    <0x02000000 0x00 0xc0000000  0x1b 0xc0000000  0x00 0x01000000>;
+
+			dma-ranges =
+			    /* RAM: PCIe 0 -> CPU 0, 64 GB (1:1) */
+			    <0x43000000 0x00 0x00000000  0x00 0x00000000  0x10 0x00000000>,
+			    /* MIP MSI doorbell: unchanged from the vendor DT */
+			    <0x03000000 0xff 0xfffff000  0x10 0x00131000  0x00 0x00001000>;
+		};
+	};
+
+	fragment@1 {
+		target-path = "/reserved-memory";
+		__overlay__ {
+			/* The RAM the 32-bit windows shadow: CPU 0xc0000000, 16 MB */
+			freebsd-pcie-mem32@c0000000 {
+				reg = <0x0 0xc0000000 0x01000000>;
+				no-map;
+			};
+		};
+	};
+};
