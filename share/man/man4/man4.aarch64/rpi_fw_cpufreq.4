@@ -1,0 +1,134 @@
+.\"-
+.\" SPDX-License-Identifier: BSD-2-Clause
+.\"
+.\" Copyright 2026 The FreeBSD Project.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions are
+.\" met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright notice,
+.\"    this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS "AS IS" AND ANY
+.\" EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+.\" WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+.\" DISCLAIMED. IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE FOR ANY
+.\" DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+.\" (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+.\" SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+.\" CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\" The views and conclusions contained in the software and documentation are
+.\" those of the authors and should not be interpreted as representing
+.\" official policies, either expressed or implied, of the FreeBSD Project.
+.\"
+.\" Author: Jeremy McMillan
+.\" Author: Claude Opus 5.5
+.\" Author: FreeBSD Contributors
+.\"
+.Dd October 4, 2026
+.Dt RPI_FW_CPUFREQ 4 aarch64
+.Os
+.Sh NAME
+.Nm rpi_fw_cpufreq
+.Nd Raspberry Pi 5 CPU clock control through the firmware
+.Sh SYNOPSIS
+To compile this driver into the kernel, place the following lines in the
+kernel configuration file:
+.Bd -ragged -offset indent
+.Cd "options FDT"
+.Cd "device cpufreq"
+.Cd "device clk"
+.Cd "device rpi_fw"
+.Cd "device rpi_fw_clk"
+.Cd "device rpi_fw_cpufreq"
+.Ed
+.Sh DESCRIPTION
+The four cores of the Raspberry Pi 5 share one clock, and the VideoCore
+firmware owns it.
+The firmware runs the cores at the lowest rate it allows until the operating
+system asks for more.
+The
+.Nm
+driver asks: it offers the range of rates the firmware reports to
+.Xr cpufreq 4 ,
+so that
+.Va dev.cpu.%d.freq
+and
+.Xr powerd 8
+work.
+.Pp
+The levels are the firmware's maximum, every multiple of 100 MHz below it,
+and the firmware's minimum.
+The maximum is the one the firmware was configured with; the driver does not
+exceed it.
+The voltage, the power and the transition time of a level are not known to
+the driver and are reported as unknown.
+.Pp
+A rate is set through the clock provider
+.Xr rpi_fw_clk 4
+and then read back from the firmware.
+A rate the firmware did not take is an error.
+Because the clock is shared, a rate set for one core is the rate of all.
+.Pp
+The firmware lowers the clock by itself when the chip is hot or its supply
+is low.
+The rate
+.Xr cpufreq 4
+reports is therefore the level nearest to the rate the firmware reports at
+that moment, which need not be the level last asked for.
+.Pp
+Unless told otherwise, the driver leaves the clock as it finds it.
+.Sh LOADER TUNABLES
+.Bl -tag -width indent
+.It Va hw.rpi_fw_cpufreq.attach_freq
+A rate in MHz to ask for once, when the clock is first available.
+It is limited to the firmware's range.
+The default, 0, leaves the clock alone.
+.El
+.Sh SYSCTL VARIABLES
+The first instance has these read-only variables:
+.Bl -tag -width indent
+.It Va dev.rpi_fw_cpufreq.0.rate
+The clock's rate in Hz, read from the firmware now.
+.It Va dev.rpi_fw_cpufreq.0.fw_min
+.It Va dev.rpi_fw_cpufreq.0.fw_max
+The lowest and the highest rate the firmware allows, in Hz.
+.It Va dev.rpi_fw_cpufreq.0.core_voltage
+The core voltage as the firmware reports it now, in the firmware's own
+units.
+.It Va dev.rpi_fw_cpufreq.0.sets
+The number of changes of the clock the driver has asked the firmware for.
+.It Va dev.rpi_fw_cpufreq.0.set_failures
+The number of those the firmware refused or did not make.
+.El
+.Sh DIAGNOSTICS
+.Bl -diag
+.It "rpi_fw_cpufreq%d: CPU clock %u MHz, %u to %u MHz in %d levels"
+The clock was found; printed once.
+.It "rpi_fw_cpufreq%d: the firmware's range for the CPU clock, %u to %u Hz, is not usable"
+The firmware reported no minimum, or a maximum below it.
+There are no levels.
+.It "rpi_fw_cpufreq%d: hw.rpi_fw_cpufreq.attach_freq: %u MHz asked for, error %d"
+The result of the request the tunable made.
+.It "rpi_fw_cpufreq%d: %u MHz asked for, the firmware reports %u MHz, error %d"
+A change failed, or the rate read back afterwards was not the one asked for.
+Printed at most once in ten seconds.
+.El
+.Sh SEE ALSO
+.Xr cpufreq 4 ,
+.Xr rpi_fw_clk 4 ,
+.Xr powerd 8
+.Sh CAVEATS
+The clock framework does not pass on a request for the rate it last set.
+After the firmware has lowered the clock by itself, asking for the level
+that was in force before is such a request: it fails, and is counted in
+.Va set_failures .
+Asking for a different level first works.

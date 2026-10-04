@@ -372,6 +372,7 @@ SUBDIR=	\
 	${_rpi5_fan} \
 	${_rpi_fw} \
 	${_rpi_fw_clk} \
+	${_rpi_fw_cpufreq} \
 	rtsx \
 	${_rtw88} \
 	${_rtw89} \
@@ -767,6 +768,7 @@ _rp1_pcie2_recon=	rp1_pcie2_recon
 _rpi5_fan=	rpi5_fan
 _rpi_fw=	rpi_fw
 _rpi_fw_clk=	rpi_fw_clk
+_rpi_fw_cpufreq=	rpi_fw_cpufreq
 _dpaa2=		dpaa2
 _sff=		sff
 _em=		em

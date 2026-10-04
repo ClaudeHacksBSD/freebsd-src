@@ -11,6 +11,7 @@ MAN=	\
 	rk_i2c.4 \
 	rk_pinctrl.4 \
 	rpi_fw_clk.4 \
+	rpi_fw_cpufreq.4 \
 
 # Install manpages shared with arm only if not installing manpages
 # for all architectures, otherwise arm takes care of installing them.
