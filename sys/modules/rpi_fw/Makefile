@@ -1,6 +1,7 @@
 .PATH: ${SRCTOP}/sys/arm64/broadcom/bcm2712
 
 KMOD=	rpi_fw
+EXPORT_SYMS=	rpi_fw_property
 SRCS=	rpi_fw.c
 SRCS+=	bus_if.h clock_if.h device_if.h ofw_bus_if.h
 SRCS+=	opt_platform.h

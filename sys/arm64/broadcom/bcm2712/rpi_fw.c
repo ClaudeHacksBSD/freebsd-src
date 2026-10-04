@@ -102,6 +102,7 @@
 #include <dev/ofw/ofw_bus_subr.h>
 
 #include <arm64/broadcom/bcm2712/bcm2712_fdt.h>
+#include <arm64/broadcom/bcm2712/rpi_fw.h>
 
 #include "clock_if.h"
 
@@ -136,7 +137,11 @@
 
 #define	REBOOT_FLAG_TRYBOOT		0x1U
 
-#define	RPI_FW_BUF_WORDS	32
+/*
+ * The property buffer is one page.  Six of its words frame the single tag
+ * of a transaction; the rest can be that tag's value buffer.
+ */
+#define	RPI_FW_BUF_WORDS	(PAGE_SIZE / sizeof(uint32_t))
 
 static const char * const rpi_fw_fdt_paths[] = {
 	"/soc@107c000000/mailbox@7c013880",
@@ -157,6 +162,14 @@ struct rpi_fw_softc {
 	bool			sc_rtc;		/* registered with clock(9) */
 	uint32_t		sc_last_code;	/* buf[1] of the last reply */
 };
+
+/*
+ * The one instance, for rpi_fw_property().  Published once the channel has
+ * answered, withdrawn first thing at detach.  A driver that calls
+ * rpi_fw_property() declares MODULE_DEPEND on rpi_fw, so rpi_fw cannot be
+ * unloaded under it.
+ */
+static struct rpi_fw_softc *rpi_fw_sc;
 
 static inline uint32_t
 mbox_read(struct rpi_fw_softc *sc, bus_size_t off)
@@ -260,6 +273,21 @@ rpi_fw_tag(struct rpi_fw_softc *sc, uint32_t tag, uint32_t *val,
 	error = rpi_fw_tag_locked(sc, tag, val, vallen, inlen);
 	mtx_unlock(&sc->sc_mtx);
 	return (error);
+}
+
+/* One property tag on behalf of another driver; see rpi_fw.h. */
+int
+rpi_fw_property(uint32_t tag, uint32_t *val, uint32_t vallen, uint32_t inlen)
+{
+	struct rpi_fw_softc *sc;
+
+	sc = (struct rpi_fw_softc *)atomic_load_acq_ptr(
+	    (volatile uintptr_t *)&rpi_fw_sc);
+	if (sc == NULL)
+		return (ENXIO);
+	if (inlen > vallen)
+		return (EINVAL);
+	return (rpi_fw_tag(sc, tag, val, vallen, inlen));
 }
 
 /*
@@ -547,6 +575,7 @@ rpi_fw_attach(device_t dev)
 	    "firmware 0x%08x, reboot flags 0x%08x\n", (uintmax_t)pa,
 	    from_fdt ? "from FDT" : "hardcoded", (uintmax_t)sc->sc_buf_pa,
 	    rev, flags);
+	atomic_store_rel_ptr((volatile uintptr_t *)&rpi_fw_sc, (uintptr_t)sc);
 
 	ctx = device_get_sysctl_ctx(dev);
 	tree = SYSCTL_ADD_NODE(ctx, SYSCTL_STATIC_CHILDREN(_hw), OID_AUTO,
@@ -586,6 +615,8 @@ rpi_fw_detach(device_t dev)
 {
 	struct rpi_fw_softc *sc = device_get_softc(dev);
 
+	if (rpi_fw_sc == sc)
+		atomic_store_rel_ptr((volatile uintptr_t *)&rpi_fw_sc, 0);
 	if (sc->sc_rtc) {
 		clock_unregister(dev);
 		sc->sc_rtc = false;
