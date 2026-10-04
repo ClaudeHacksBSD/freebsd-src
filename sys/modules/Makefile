@@ -64,6 +64,7 @@ SUBDIR=	\
 	${_bcm2712} \
 	${_bcm2712_pcie} \
 	${_bcm2712_pinctrl} \
+	${_bcm2712_pm} \
 	${_bcm2712_sdhci} \
 	${_bcm283x_clkman} \
 	${_bcm283x_pwm} \
@@ -370,6 +371,7 @@ SUBDIR=	\
 	${_rp1_pcie2_recon} \
 	${_rpi5_fan} \
 	${_rpi_fw} \
+	${_rpi_fw_clk} \
 	rtsx \
 	${_rtw88} \
 	${_rtw89} \
@@ -754,6 +756,7 @@ _armv8_rng=	armv8_rng
 _bcm2712=	bcm2712
 _bcm2712_pcie=	bcm2712_pcie
 _bcm2712_pinctrl=	bcm2712_pinctrl
+_bcm2712_pm=	bcm2712_pm
 _brcmstb_gpio=	brcmstb_gpio
 _bcm2712_sdhci=	bcm2712_sdhci
 _cyw=		cyw
@@ -763,6 +766,7 @@ _rp1_gpio=	rp1_gpio
 _rp1_pcie2_recon=	rp1_pcie2_recon
 _rpi5_fan=	rpi5_fan
 _rpi_fw=	rpi_fw
+_rpi_fw_clk=	rpi_fw_clk
 _dpaa2=		dpaa2
 _sff=		sff
 _em=		em

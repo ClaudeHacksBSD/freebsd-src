@@ -1,0 +1,186 @@
+.\"-
+.\" SPDX-License-Identifier: BSD-2-Clause
+.\"
+.\" Copyright 2026 The FreeBSD Project.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions are
+.\" met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright notice,
+.\"    this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS "AS IS" AND ANY
+.\" EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+.\" WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+.\" DISCLAIMED. IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE FOR ANY
+.\" DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+.\" (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+.\" SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+.\" CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\" The views and conclusions contained in the software and documentation are
+.\" those of the authors and should not be interpreted as representing
+.\" official policies, either expressed or implied, of the FreeBSD Project.
+.\"
+.\" Author: Jeremy McMillan
+.\" Author: Claude Opus 5.5
+.\" Author: FreeBSD Contributors
+.\"
+.\" Describes a driver written from a functional specification of the
+.\" BCM2712 PM block.
+.\"
+.Dd October 4, 2026
+.Dt BCM2712_PM 4 aarch64
+.Os
+.Sh NAME
+.Nm bcm2712_pm
+.Nd BCM2712 power management block: V3D power domain and reset
+.Sh SYNOPSIS
+To compile this driver into the kernel, place the following lines in the
+kernel configuration file:
+.Bd -ragged -offset indent
+.Cd "options FDT"
+.Cd "device hwreset"
+.Cd "device bcm2712_pm"
+.Ed
+.Pp
+To load the driver as a module:
+.Bd -literal -offset indent
+kldload bcm2712_pm
+.Ed
+.Sh DESCRIPTION
+The
+.Nm
+driver gives the V3D GPU of the Broadcom BCM2712 its power domain and its
+reset line.
+Both belong to the PM block of the SoC, whose register window is also the
+SoC's watchdog, reboot and power-off controller.
+The driver takes the whole window and implements only the two things the
+GPU needs:
+.Bl -bullet
+.It
+reset 0, the V3D reset, as a reset line of the kernel's reset framework;
+.It
+power domain 1, the V3D domain, through functions of its own, declared in
+.In arm64/broadcom/bcm2712/bcm2712_pm.h ,
+as the kernel has no framework for power domains.
+.El
+.Pp
+The numbers are the cells with which a consumer's device tree node names
+them in its
+.Va resets
+and
+.Va power-domains
+properties.
+Any other number is refused.
+.Pp
+On the BCM2712 both are the same thing: one bit, bit 6 of the register at
+offset 0x304 of the window, which is an active-low reset of the GPU.
+The domain is on while the bit is set and off while it is clear.
+Asserting the reset clears the bit; deasserting it waits at least one
+microsecond and sets it, so that an assertion followed by a deassertion is
+a complete reset.
+A reset leaves the bit set, that is the domain on, whatever it found.
+.Pp
+A consumer gets a handle for a power domain, enables and disables it, and
+releases it.
+The driver counts the enabled handles of a domain, switches the domain on
+when the first is enabled and off when the last is disabled or released.
+.Pp
+The V3D domain has a parent domain, number 0.
+Before the driver switches the V3D domain on it powers the parent on, and
+after it has switched the V3D domain off it powers the parent off, with the
+sequences and the register, at offset 0x10c, that the other SoCs of the
+family have for it.
+If the parent's power switch is closed already, nothing is written.
+Otherwise the switch is closed, power good is waited for, isolation is
+removed and memory repair is run; if power does not become good or the
+repair does not finish, what was done is undone, the V3D domain stays off
+and its consumer does not attach.
+Powering the parent off opens the switch again.
+A reset of the GPU does not touch the parent domain.
+.Pp
+The driver writes that one bit and the parent's power switch, and nothing
+else; every write carries the password the block requires in its top byte.
+The registers of the window that reboot or halt the system, or arm the
+watchdog, are never written.
+.Pp
+The driver attaches before the devices of the default bus pass, so that
+its consumers find it when they attach.
+It refuses to detach while a power domain handle exists.
+.Sh HARDWARE
+The
+.Nm
+driver supports the PM block described by a device tree node with the
+compatible string:
+.Pp
+.Bl -bullet -compact
+.It
+brcm,bcm2712-pm
+.El
+.Pp
+The node's register window, named
+.Dq pm
+if its windows are named, must be at least 0x308 bytes long.
+.Sh SYSCTL VARIABLES
+The following read-only variables are available under
+.Va dev.bcm2712_pm.%d .
+Registers are shown in hexadecimal.
+.Bl -tag -width indent
+.It Va reg_304
+The register at offset 0x304, read when asked.
+Bit 6 is set while the V3D domain is on.
+.It Va reg_304_attach
+The same register as it was read at attach, before the driver wrote
+anything.
+.It Va reg_10c
+The register at offset 0x10c, the parent domain's power switch, read when
+asked.
+.It Va reg_10c_attach
+The same register as it was read at attach.
+.It Va grafx_v3d_users
+The number of enabled handles of the V3D power domain.
+The domain is on while it is not 0.
+.El
+.Sh DIAGNOSTICS
+.Bl -diag
+.It "bcm2712_pm%d: cannot map the register window"
+.It "bcm2712_pm%d: register window is 0x%jx bytes, 0x%x needed"
+The device tree node does not describe the PM block as the driver needs it.
+The driver does not attach.
+.It "bcm2712_pm%d: parent domain: power did not become good: 0x10c = 0x%08x"
+.It "bcm2712_pm%d: parent domain: memory repair did not finish: 0x10c = 0x%08x"
+The parent domain could not be powered on.
+The value is the register as the wait ended.
+The V3D domain is not switched on.
+.It "bcm2712_pm%d: parent domain power-on starts: 0x10c = 0x%08x"
+.It "bcm2712_pm%d: parent domain power-on ends: 0x10c = 0x%08x"
+.It "bcm2712_pm%d: parent domain power-on ends in a timeout: 0x10c = 0x%08x"
+.It "bcm2712_pm%d: parent domain power-off starts: 0x10c = 0x%08x"
+.It "bcm2712_pm%d: parent domain power-off ends: 0x10c = 0x%08x"
+Logged at debug priority each time the V3D domain is switched.
+.It "bcm2712_pm%d: 0x304 = 0x%08x, 0x10c = 0x%08x"
+The two registers as found at attach.
+Printed in a verbose boot.
+.El
+.Sh SEE ALSO
+.Xr fdt 4 ,
+.Xr v3d 4 ,
+.Xr kldload 8
+.Sh CAVEATS
+That the register at offset 0x10c is the parent domain's power switch on
+the BCM2712, with the fields it has on the other SoCs of the family, is not
+established.
+.Pp
+The driver owns the register window of the watchdog, reboot and power-off
+controller and provides none of those functions.
+.Pp
+The other power domains and reset lines that the block's device tree
+binding numbers are not implemented.

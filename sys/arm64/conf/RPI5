@@ -61,6 +61,8 @@ device		bcm2712			# PWM + thermal sensor
 device		bcm2712_pcie		# RP1 GEM interrupt router
 device		rpi5_fan		# Pi 5 cooling fan thermal control
 device		rpi_fw			# VPU firmware mailbox, TryBoot
+device		rpi_fw_clk		# Raspberry Pi firmware clocks
+device		bcm2712_pm		# BCM2712 PM: V3D power domain and reset
 device		brcmstb_gpio		# SoC-native GPIO (WL_ON, SD power)
 device		bcm2712_pinctrl		# SoC pin mux (SDIO2 for WiFi)
 device		brcmstb_reset		# SW_INIT reset controller (PCIe bridge resets)
