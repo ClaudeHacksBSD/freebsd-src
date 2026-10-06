@@ -285,10 +285,9 @@ cyw_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 		 * wpa_supplicant on the host and the firmware never needs
 		 * (or expects) it.  Mirrors Linux brcmfmac, which only
 		 * calls brcmf_set_pmk inside `if (use_fwsup != NONE)`
-		 * (cfg80211.c:2495-2507).  The host-side PSK sysctl and
-		 * cyw_set_pmk() are kept available for future firmware that
-		 * does advertise FWSUP — the probe (hw.cyw.probe_fwsup)
-		 * is the gate.
+		 * (cfg80211.c:2495-2507).  cyw_set_pmk() is kept for
+		 * future firmware that does advertise FWSUP; the probe
+		 * (hw.cyw.probe_fwsup) is the gate.
 		 */
 
 		memcpy(sc->join_bssid, bssid, 6);
@@ -443,22 +442,14 @@ cyw_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 }
 
 /* -------------------------------------------------------------------------
- * Key management — diagnostic logging only (Step 1 instrumentation for
- * §16.8 Item 4).  None of these actually push the key down to the
- * firmware yet; their purpose right now is to confirm whether
- * wpa_supplicant's IEEE80211_IOC_SETKEY ioctl reaches the driver at
- * all during a 4-way handshake attempt.
+ * Key management.
  *
  * iv_key_alloc must return a software keyix:
  *   - For group keys (IEEE80211_KEY_GROUP), use the four built-in
  *     iv_nw_keys slots (keyix = k - vap->iv_nw_keys, 0..3).
  *   - For pairwise keys, return slot 0 as a placeholder.
  *
- * iv_key_set/iv_key_delete return 1 (success) so net80211 doesn't tear
- * down the handshake state on a "key install failed" path; the firmware
- * just won't actually encrypt/decrypt yet.  Real WLC_SET_KEY wiring is
- * the next commit if this commit shows wpa_supplicant *is* calling
- * these.
+ * cyw_key_set() installs the key in the firmware; see below.
  * ------------------------------------------------------------------------- */
 /* Forward decl — cyw_vap_create installs this as the if_transmit hook. */
 static int cyw_vap_transmit(if_t ifp, struct mbuf *m);
@@ -1184,7 +1175,7 @@ cyw_parent(struct ieee80211com *ic)
 			device_printf(sc->dev, "cyw_parent: pause done\n");
 
 			/*
-			 * Step 1 FWSUP probe — must run AFTER WLC_UP, since
+			 * FWSUP probe — must run AFTER WLC_UP, since
 			 * sup_wpa returns BCME_NOTUP when the firmware is DOWN
 			 * (verified at attach: error -23 / errno 5).
 			 */
@@ -1459,8 +1450,7 @@ cyw_cfg_attach(struct cyw_softc *sc)
 		return (err);
 	}
 
-	/* Step 5: PSK sysctl + E_LINK / E_SET_SSID handlers */
-	cyw_security_sysctl_init(sc);
+	/* E_LINK / E_SET_SSID handlers */
 	err = cyw_security_event_attach(sc);
 	if (err != 0) {
 		cyw_scan_detach(sc);

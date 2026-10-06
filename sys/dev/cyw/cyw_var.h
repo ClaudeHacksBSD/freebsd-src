@@ -609,7 +609,7 @@ struct cyw_softc {
 	uint8_t			sdpcm_tx_seq;
 	uint8_t			sdpcm_rx_max;	/* credit ceiling from firmware */
 
-	/* RX diagnostic counters (Step 6 — F2 EIO classification) */
+	/* RX diagnostic counters (F2 EIO classification) */
 	uint64_t		rx_ok_count;	/* successful F2 reads */
 	uint64_t		rx_eio_count;	/* CMD53 returned EIO */
 	uint64_t		tx_eio_count;	/* F2 write failed (cyw_txfail) */
@@ -619,7 +619,7 @@ struct cyw_softc {
 	int			fwready_ticks;	/* ticks at FWREADY, for TX EIO diag */
 	bool			first_tx_logged; /* first IOCTL write timing logged */
 
-	/* Data-channel RX counters (Step 7 — RX path verification) */
+	/* Data-channel RX counters */
 	uint64_t		rx_data_frames;	/* SDPCM chan-2 frames delivered up */
 	uint64_t		rx_data_bytes;	/* total bytes delivered */
 	uint64_t		rx_eapol_frames; /* subset with EtherType 0x888E */
@@ -669,13 +669,9 @@ struct cyw_softc {
 	/* MAC address read from cur_etheraddr IOVAR during cfg attach */
 	uint8_t			mac_addr[IEEE80211_ADDR_LEN];
 
-	/* Association state (Step 5) */
+	/* Association state */
 	uint8_t			join_bssid[6];	/* BSSID currently joining/joined */
 	bool			link_up;	/* set from E_LINK MSG_LINK flag */
-
-	/* WPA passphrase set via hw.cyw.psk sysctl (Step 5) */
-	uint8_t			psk[CYW_WSEC_MAX_PSK_LEN];
-	uint16_t		psk_len;
 
 	/*
 	 * dongle_up: mirrors Linux cfg->dongle_up.  Set the first time
@@ -817,7 +813,7 @@ int  cyw_fil_bsscfg_data_set(struct cyw_softc *, const char *name,
 int  cyw_fil_iovar_int_get(struct cyw_softc *, const char *name,
 		uint32_t *val);
 
-/* FWSUP probe (Step 1 diagnostic). Defined in cyw.c. */
+/* FWSUP probe (diagnostic). Defined in cyw.c. */
 extern int cyw_probe_fwsup_tunable;
 void cyw_probe_fwsup(struct cyw_softc *);
 int  cyw_fil_iovar_int_set(struct cyw_softc *, const char *name,
@@ -844,10 +840,9 @@ uint16_t cyw_chanspec_for_join(struct cyw_softc *, const uint8_t *bssid,
 int  cyw_cfg_attach(struct cyw_softc *);
 void cyw_cfg_detach(struct cyw_softc *);
 
-/* cyw_security.c — Step 5 */
+/* cyw_security.c */
 int  cyw_set_security(struct cyw_softc *, uint32_t wsec, uint32_t wpa_auth);
 int  cyw_set_pmk(struct cyw_softc *, const uint8_t *psk, uint16_t len);
-void cyw_security_sysctl_init(struct cyw_softc *);
 int  cyw_security_event_attach(struct cyw_softc *);
 void cyw_security_event_detach(struct cyw_softc *);
 

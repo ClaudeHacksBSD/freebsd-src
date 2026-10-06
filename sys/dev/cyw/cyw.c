@@ -230,7 +230,7 @@ cyw_attach(device_t dev)
 	    "firmware_version", CTLFLAG_RD,
 	    sc->fw_version, 0, "Firmware version string");
 
-	/* RX diagnostic counters (Step 6 — F2 EIO classification) */
+	/* RX diagnostic counters (F2 EIO classification) */
 	SYSCTL_ADD_U64(&sc->sysctl_ctx,
 	    SYSCTL_CHILDREN(sc->sysctl_tree), OID_AUTO,
 	    "rx_ok_count", CTLFLAG_RD, &sc->rx_ok_count, 0,
@@ -256,7 +256,7 @@ cyw_attach(device_t dev)
 	    "rx_last_eio_ticks", CTLFLAG_RD, &sc->rx_last_eio_ticks, 0,
 	    "ticks of last F2 EIO");
 
-	/* Data-channel RX counters (Step 7 — RX path verification) */
+	/* Data-channel RX counters */
 	SYSCTL_ADD_U64(&sc->sysctl_ctx,
 	    SYSCTL_CHILDREN(sc->sysctl_tree), OID_AUTO,
 	    "rx_data_frames", CTLFLAG_RD, &sc->rx_data_frames, 0,
