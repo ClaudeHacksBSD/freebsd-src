@@ -23,12 +23,11 @@
  */
 
 /*
- * cyw_security.c — WPA2-PSK security & E_LINK/E_SET_SSID handlers (Step 5)
+ * cyw_security.c — WPA2-PSK security & E_LINK/E_SET_SSID handlers
  *
  * Provides:
  *   cyw_set_security()     — WLC_SET_AUTH=0, wsec, wpa_auth IOVARs
  *   cyw_set_pmk()          — WLC_SET_WSEC_PMK with raw passphrase
- *   cyw_security_sysctl_init() — hw.cyw.psk write-only sysctl
  *   cyw_security_event_attach()  — register E_LINK / E_SET_SSID handlers
  *
  * Reference: freebsd-brcmfmac/src/security.c and Linux brcmfmac cfg80211.c
@@ -147,49 +146,6 @@ cyw_set_pmk(struct cyw_softc *sc, const uint8_t *psk, uint16_t len)
 	else
 		device_printf(sc->dev, "set_pmk: len=%u ok\n", len);
 	return (err);
-}
-
-/* -------------------------------------------------------------------------
- * psk sysctl — write-only.  Accepts 8–63 char passphrase.
- * ------------------------------------------------------------------------- */
-static int
-cyw_sysctl_psk(SYSCTL_HANDLER_ARGS)
-{
-	struct cyw_softc *sc = arg1;
-	char buf[CYW_WSEC_MAX_PSK_LEN + 1];
-	int err, len;
-
-	memset(buf, 0, sizeof(buf));
-
-	err = sysctl_handle_string(oidp, buf, sizeof(buf), req);
-	if (err != 0 || req->newptr == NULL)
-		return (err);
-
-	len = strlen(buf);
-	if (len < 8 || len > 63) {
-		device_printf(sc->dev, "psk: must be 8-63 characters\n");
-		return (EINVAL);
-	}
-
-	CYW_LOCK(sc);
-	memset(sc->psk, 0, sizeof(sc->psk));
-	memcpy(sc->psk, buf, len);
-	sc->psk_len = (uint16_t)len;
-	CYW_UNLOCK(sc);
-
-	device_printf(sc->dev, "psk: stored %d-byte passphrase\n", len);
-	return (0);
-}
-
-void
-cyw_security_sysctl_init(struct cyw_softc *sc)
-{
-	if (sc->sysctl_tree == NULL)
-		return;
-	SYSCTL_ADD_PROC(&sc->sysctl_ctx,
-	    SYSCTL_CHILDREN(sc->sysctl_tree), OID_AUTO, "psk",
-	    CTLTYPE_STRING | CTLFLAG_WR | CTLFLAG_MPSAFE, sc, 0,
-	    cyw_sysctl_psk, "A", "WPA2 PSK passphrase (write-only, 8-63 chars)");
 }
 
 /* -------------------------------------------------------------------------
