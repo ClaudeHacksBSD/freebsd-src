@@ -68,7 +68,7 @@
  *
  * and the whole of it sits inside the first /memory region, 0x0 .. 0x3f400000,
  * which the firmware reports and the probe confirmed.  128 MiB is ample: the
- * RPI5-FDT kernel's segments span about 15.4 MiB, and modules and metadata go
+ * RPI5 kernel's segments span about 15.4 MiB, and modules and metadata go
  * after it.
  *
  * 2 MiB aligned because arm64 kernels expect to be loaded on a 2 MiB boundary.
