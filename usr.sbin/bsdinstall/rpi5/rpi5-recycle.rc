@@ -1,0 +1,36 @@
+#!/bin/sh
+#-
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# Copyright (c) 2026 Jeremy McMillan
+#
+# rpi5_recycle -- at the first boot of a system installed from the Raspberry
+# Pi 5 installer card, delete the installer's partition on the card and grow
+# the boot partition, as the user chose in the installer.
+#
+# The installer puts this file in /usr/local/etc/rc.d, its settings in
+# /etc/rc.conf.d/rpi5_recycle, and creates /firstboot.  rc(8) runs a
+# "firstboot" script only while /firstboot exists, which is once.
+#
+
+# PROVIDE: rpi5_recycle
+# REQUIRE: FILESYSTEMS
+# BEFORE: LOGIN
+# KEYWORD: firstboot
+
+. /etc/rc.subr
+
+name="rpi5_recycle"
+desc="Delete the installer's partition on the SD card"
+rcvar="rpi5_recycle_enable"
+start_cmd="rpi5_recycle_start"
+stop_cmd=":"
+
+rpi5_recycle_start()
+{
+	/usr/local/libexec/rpi5-recycle "${rpi5_recycle_grow:-none}"
+}
+
+load_rc_config $name
+: ${rpi5_recycle_enable:="NO"}
+run_rc_command "$1"

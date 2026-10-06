@@ -1,0 +1,80 @@
+################################################################################
+# Trpiboot DRaspberry Pi 5 specifics
+
+	This loader is started directly by the Raspberry Pi 5 VPU firmware,
+	with no EFI and no EDK2 in the boot path.  The device tree comes from
+	the firmware as a physical address in x0; there is no EFI memory map,
+	so all memory information comes from the tree's /memory node.
+
+	The console is the SoC PL011 at 0x107d001000, which the firmware has
+	already configured to 115200 8N1 before entry.
+
+	md0: is a memory disk embedded in the loader image itself, so it is
+	available with no storage driver at all.  disk0: is the SD card.
+
+	The loader boots from md0: unless loader.env on the card's FAT
+	partition (disk0s1:) sets rootdev, for example "rootdev=disk0s2a:".
+	It then reads /boot from that filesystem.  A boot started from
+	tryboot.txt reads tryboot.env first.
+
+################################################################################
+# Ttryboot DReboot once using tryboot.txt
+
+	tryboot [-n]
+
+	Asks the VPU firmware, through its property mailbox, to read
+	tryboot.txt instead of config.txt for the next boot only, then
+	resets.  The flag is consumed by that boot, so every later boot is
+	back on config.txt: a tryboot.txt that fails to boot costs one power
+	cycle.  The flag is read back before resetting.
+
+	-n	arm the flag without resetting.
+
+################################################################################
+# Tuntryboot DClear an armed TryBoot flag
+
+	untryboot
+
+################################################################################
+# Tvcinfo DShow VPU firmware, board and TryBoot state
+
+	vcinfo
+
+	Firmware revision, board revision and serial, SoC temperature (there
+	is no fan control at this prompt), the reboot flags that
+	will apply to the next boot, and which config file this boot used
+	(from /chosen/bootloader/tryboot in the firmware's device tree).
+
+################################################################################
+# Tmmu DShow the loader's MMU, cache and memory map
+
+	mmu
+
+	Whether the MMU and caches are on, the EL2 translation registers,
+	the /memory ranges from the device tree, and the map as runs of one
+	attribute: RAM write-back, the framebuffer non-cacheable, the rest
+	Device-nGnRnE.  The kernel is entered with the MMU and D-cache off.
+
+################################################################################
+# Tsdinfo DShow the SD card and its controller
+
+	sdinfo
+
+	The loader reads the SD card in the board's slot as disk0:, polled
+	and read-only, through the BCM2712's own SDHCI.  sdinfo prints the
+	controller's state, the card's identity and size, and what the reads
+	so far have cost.  Without a card it says why there is no disk0.
+
+################################################################################
+# Tusbinfo DShow the USB keyboard controllers and ports
+
+	usbinfo
+
+	The loader drives a USB keyboard for the HDMI console through RP1's
+	two xHCI controllers, polled, with HID boot-protocol keyboards
+	directly on a root port (no hubs).  RP1 is reachable only when the
+	firmware leaves PCIe2 trained: config.txt pciex4_reset=0.  usbinfo
+	prints why there is no keyboard, or each controller and what is on
+	each connected port.
+
+################################################################################

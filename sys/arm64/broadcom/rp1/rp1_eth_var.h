@@ -1,7 +1,7 @@
 /*-
- * SPDX-License-Identifier: BSD-2-Clause
+ * SPDX-License-Identifier: BSD-3-Clause
  *
- * Copyright (c) 2025 FreeBSD Contributors
+ * Copyright (c) 2025 Jeremy McMillan
  * All rights reserved.
  *
  * RP1 Ethernet (Cadence GEM_GXL 1p09) - hardware constants and softc
@@ -81,7 +81,7 @@
  * Cadence GEM_GXL core register offsets (MAC APB window at RP1_ETH_MAC_BASE)
  * Source: Cadence GEM_GXL 1p09 User Guide; cross-referenced with if_cgem.c.
  *
- * Milestone 1 follows the Linux macb_init_hw / cgem_config conventions:
+ * The bring-up follows the Linux macb_init_hw / cgem_config conventions:
  *  1. Reset MAC (NET_CTRL=0)
  *  2. Configure NET_CFG with 1G FD default + MDC_DIV96
  *  3. Enable MDIO (NET_CTRL = MDIO_EN only — RXEN deferred)
@@ -101,7 +101,7 @@
 
 /* GEM_NET_CTRL bits */
 #define GEM_NET_CTRL_RXEN	(1u << 2)  /* enable receive RGMII state machine */
-#define GEM_NET_CTRL_TXEN	(1u << 3)  /* enable transmit (not needed for M1) */
+#define GEM_NET_CTRL_TXEN	(1u << 3)  /* enable transmit */
 #define GEM_NET_CTRL_MDIO_EN	(1u << 4)  /* enable MDIO management port */
 
 /*
@@ -191,7 +191,7 @@
 #define GEM_NET_STATUS_LINK		(1u << 0)  /* PCS link — not RGMII pin */
 #define GEM_NET_STATUS_MDIO_IDLE	(1u << 2)  /* MDIO bus idle */
 
-/* MAC register accessors (no lock needed in M1 single-threaded init) */
+/* MAC register accessors (no lock needed in single-threaded init) */
 #define MAC_RD4(sc, reg) \
 	(*(volatile uint32_t *)((uintptr_t)(sc)->mac_kva + (reg)))
 #define MAC_WR4(sc, reg, val) \
@@ -319,9 +319,8 @@
 #define RPI5_COMPAT_CM5			"raspberrypi,5-compute-module"
 
 /* -----------------------------------------------------------------------
- * Softc — Milestone 1 (eth_cfg bring-up + link observation)
- *
- * Milestone 2 will extend this with MAC window KVA, ifnet, miibus etc.
+ * Softc of rp1_eth_cfg.c (eth_cfg bring-up + link observation); the
+ * network driver's own is in rp1_eth.c.
  * ----------------------------------------------------------------------- */
 struct rp1_eth_softc {
 	struct mtx	 sc_mtx;
@@ -352,7 +351,7 @@ struct rp1_eth_softc {
 #define RP1_ETH_LOCK_ASSERT(sc)	mtx_assert(&(sc)->sc_mtx, MA_OWNED)
 
 /* -----------------------------------------------------------------------
- * Milestone 2 attach/detach interface (rp1_eth.c ↔ rp1_eth_cfg.c)
+ * Network attach/detach interface (rp1_eth.c ↔ rp1_eth_cfg.c)
  * ----------------------------------------------------------------------- */
 int  rp1eth_attach(struct rp1_eth_softc *cfg_sc);
 void rp1eth_detach(void);

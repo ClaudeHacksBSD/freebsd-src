@@ -1,21 +1,21 @@
 /*-
- * SPDX-License-Identifier: BSD-2-Clause
+ * SPDX-License-Identifier: BSD-3-Clause
  *
- * Copyright (c) 2025 FreeBSD Contributors
+ * Copyright (c) 2025 Jeremy McMillan
  * All rights reserved.
  *
- * rp1_eth — Milestone 1: eth_cfg bring-up and link observation
+ * rp1_eth — eth_cfg bring-up and link observation
  *
- * This module performs the minimum work needed to observe RGMII link state
- * on the Raspberry Pi 5's on-board Cadence GEM_GXL Ethernet MAC without
- * touching the MAC DMA paths.  It validates:
+ * This file does what is needed to observe RGMII link state on the
+ * Raspberry Pi 5's on-board Cadence GEM_GXL Ethernet MAC without touching
+ * the MAC DMA paths.  It sets up and reports:
  *   - pcie2 outbound window MMIO mapping (eth_cfg at 0x1f_00104000)
  *   - FDT metadata extraction (MAC addr, phy-mode, PHY reset GPIO)
  *   - BCM PHY reset via GPIO 32 (active-low)
  *   - eth_cfg.STATUS.RGMII_LINK_STATUS toggling on cable plug/unplug
  *
- * Exit criteria: plug/unplug the Ethernet cable and observe
- *   sysctl hw.rp1_eth.cfg.status changing.
+ * To see it work, plug and unplug the Ethernet cable and watch
+ *   sysctl hw.rp1_eth.cfg.status change.
  *
  * rp1_eth.c forks if_cgem.c into the full network driver; this file handles
  * eth_cfg bring-up and PHY reset.
@@ -42,11 +42,22 @@
 #include <dev/ofw/openfirm.h>
 
 #include "rp1_eth_var.h"
+#include <arm64/broadcom/bcm2712/bcm2712_fdt.h>		/* FDT reg resolution */
 #include <arm64/broadcom/bcm2712/bcm2712_var.h>		/* RP1_GPIO_* constants */
 
 MALLOC_DEFINE(M_RP1ETH, "rp1_eth", "RP1 Ethernet driver memory");
 
 static struct rp1_eth_softc *rp1_eth_sc = NULL;
+
+/*
+ * The GEM node, saved by rp1_eth_fdt_read_metadata() so the register windows
+ * can be resolved from its reg property instead of a constant.
+ */
+static phandle_t rp1_eth_gem_node = -1;
+
+/* RP1 GPIO, for the PHY reset pin and its pad control. */
+static const char * const rp1_eth_gpio_paths[] =
+    BCM2712_RP1_PATHS("gpio@d0000");
 
 /* -----------------------------------------------------------------------
  * FDT helpers
@@ -103,7 +114,7 @@ rp1_eth_fdt_find_compat(phandle_t start, const char *compat)
  *
  * Reads:
  *   local-mac-address  (6 bytes)
- *   phy-mode           (string, must equal "rgmii-id" for this milestone)
+ *   phy-mode           (string, must equal "rgmii-id")
  *   phy-handle         → lookup ethernet-phy child → read reg (MDIO addr)
  *   phy-reset-gpios    (phandle, gpio-num, flags)
  *   phy-reset-duration (u32, milliseconds — should be 5)
@@ -142,6 +153,7 @@ rp1_eth_fdt_read_metadata(struct rp1_eth_softc *sc)
 		return (ENODEV);
 	}
 	printf("rp1_eth: found FDT node '%s'\n", RP1_ETH_COMPAT_PRIMARY);
+	rp1_eth_gem_node = gem_node;
 
 	/* local-mac-address (6 raw bytes, not a string) */
 	len = OF_getprop(gem_node, "local-mac-address", mac, sizeof(mac));
@@ -168,14 +180,14 @@ rp1_eth_fdt_read_metadata(struct rp1_eth_softc *sc)
 	}
 
 	/*
-	 * Milestone 1 only supports rgmii-id.
+	 * Only rgmii-id is supported.
 	 * rgmii-id means the BCM PHY applies both TX and RX delays internally.
 	 * We MUST NOT set CLKGEN.{TXCLKDELEN,RXCLKDELEN} — doing so would add
 	 * extra delay and cause CRC errors at 1 Gbps.
 	 */
 	if (strcmp(sc->phy_mode, RP1_ETH_PHY_MODE_RGMII_ID) != 0) {
 		printf("rp1_eth: phy-mode \"%s\" != \"%s\"; "
-		    "refusing attach (can be relaxed in milestone 2)\n",
+		    "refusing attach\n",
 		    sc->phy_mode, RP1_ETH_PHY_MODE_RGMII_ID);
 		return (ENXIO);
 	}
@@ -247,6 +259,7 @@ rp1_eth_phy_reset(struct rp1_eth_softc *sc)
 	volatile uint32_t *ctrl_reg, *pad_reg;
 	uint32_t ctrl_val, pad_old;
 	uint32_t gpio_pin = sc->phy_reset_gpio;
+	bus_addr_t gpio_phys, pads_phys;
 
 	/*
 	 * Map PADS_BANK1 to change GPIO32 from open-drain to push-pull.
@@ -262,7 +275,17 @@ rp1_eth_phy_reset(struct rp1_eth_softc *sc)
 	 * overrides BCM's open-drain assertion and reliably deasserts RESET_N.
 	 * Linux's gpiod framework does the equivalent automatically.
 	 */
-	pads_map = pmap_mapdev_attr(RP1_PADS_BANK1_BASE_PHYS, RP1_PADS_MAP_SIZE,
+	/*
+	 * PADS_BANK1 is not a node of its own: gpio@d0000's reg[2] is the whole
+	 * PADS_BANK region (0xc000, three 0x4000 banks) and bank 1 sits
+	 * 0x4000 into it.  Resolve the region and add the bank offset.
+	 */
+	pads_phys = RP1_PADS_BANK1_BASE_PHYS;
+	if (bcm2712_fdt_rp1(rp1_eth_gpio_paths, "raspberrypi,rp1-gpio", 2,
+	    &pads_phys, NULL))
+		pads_phys += 0x4000;		/* RP1_BANK_OFFSET(1) */
+
+	pads_map = pmap_mapdev_attr(pads_phys, RP1_PADS_MAP_SIZE,
 	    VM_MEMATTR_DEVICE);
 	if (pads_map != NULL) {
 		pad_reg = (volatile uint32_t *)
@@ -270,14 +293,18 @@ rp1_eth_phy_reset(struct rp1_eth_softc *sc)
 		pad_old = *pad_reg;
 		/* OD=0 (push-pull) + IE=1 (input enabled so we can verify level) */
 		*pad_reg = RP1_PAD_PUSHPULL_HIGH_IE;
-		printf("rp1_eth: GPIO%u PAD 0x%02x→0x%02x (OD cleared for push-pull)\n",
-		    gpio_pin, pad_old, *pad_reg);
+		printf("rp1_eth: GPIO%u PAD 0x%02x→0x%02x at 0x%lx "
+		    "(OD cleared for push-pull)\n",
+		    gpio_pin, pad_old, *pad_reg, (unsigned long)pads_phys);
 		pmap_unmapdev(pads_map, RP1_PADS_MAP_SIZE);
 	} else {
 		printf("rp1_eth: cannot map PADS_BANK1 — reset deassert may fail\n");
 	}
 
-	gpio_map = pmap_mapdev_attr(RP1_GPIO_BASE_PHYS, RP1_GPIO_MAP_SIZE,
+	gpio_phys = RP1_GPIO_BASE_PHYS;
+	(void)bcm2712_fdt_rp1(rp1_eth_gpio_paths, "raspberrypi,rp1-gpio", 0,
+	    &gpio_phys, NULL);
+	gpio_map = pmap_mapdev_attr(gpio_phys, RP1_GPIO_MAP_SIZE,
 	    VM_MEMATTR_DEVICE);
 	if (gpio_map == NULL) {
 		printf("rp1_eth: cannot map GPIO registers for PHY deassert\n");
@@ -450,17 +477,23 @@ rp1_eth_cfg_status_fmt_sysctl(SYSCTL_HANDLER_ARGS)
 }
 
 /* -----------------------------------------------------------------------
- * Module event handler
+ * Set-up: everything from the FDT walk to the network interface.
+ *
+ * Run at MOD_LOAD under ACPI.  On an FDT boot RP1 is a PCI device and its
+ * registers cannot be found until rp1pci has published BAR1, which happens
+ * at SI_SUB_CONFIGURE, after MOD_LOAD; the set-up is deferred until then.
  * ----------------------------------------------------------------------- */
 static int
-rp1_eth_modevent(module_t mod __unused, int event, void *arg __unused)
+rp1_eth_load(void)
 {
 	struct rp1_eth_softc *sc;
 	struct sysctl_oid *tree, *cfg_tree, *mac_tree;
+	bus_addr_t mac_phys, cfg_phys;
+	bus_size_t mac_sz;
+	bool mac_from_fdt;
 	int error;
 
-	switch (event) {
-	case MOD_LOAD:
+	{
 		sc = malloc(sizeof(*sc), M_RP1ETH, M_WAITOK | M_ZERO);
 
 		mtx_init(&sc->sc_mtx, "rp1_eth", NULL, MTX_DEF);
@@ -484,29 +517,55 @@ rp1_eth_modevent(module_t mod __unused, int event, void *arg __unused)
 		 * RXEN=1 the GEM's RGMII sampler is held at reset and
 		 * eth_cfg.STATUS is frozen at 0 regardless of cable state.
 		 */
-		sc->mac_kva = pmap_mapdev_attr(RP1_ETH_MAC_BASE_PHYS,
+		/*
+		 * ethernet@100000 describes the MAC window and only the MAC
+		 * window: reg = <0xc0 0x40100000 0x0 0x4000>, a single entry,
+		 * both in the vendor DTB and in Linux's rp1.dtsi.
+		 */
+		mac_phys = RP1_ETH_MAC_BASE_PHYS;
+		mac_from_fdt = rp1_eth_gem_node != -1 &&
+		    bcm2712_fdt_rp1_reg(rp1_eth_gem_node, 0, &mac_phys,
+		    &mac_sz);
+
+		sc->mac_kva = pmap_mapdev_attr(mac_phys,
 		    RP1_ETH_MAC_MAP_SIZE, VM_MEMATTR_DEVICE);
 		if (sc->mac_kva == NULL) {
 			printf("rp1_eth: cannot map MAC at 0x%lx\n",
-			    (unsigned long)RP1_ETH_MAC_BASE_PHYS);
+			    (unsigned long)mac_phys);
 			sysctl_ctx_free(&sc->sysctl_ctx);
 			mtx_destroy(&sc->sc_mtx);
 			free(sc, M_RP1ETH);
 			return (ENXIO);
 		}
 		sc->mac_mapped = 1;
-		printf("rp1_eth: GEM MAC mapped at phys 0x%lx KVA %p\n",
-		    (unsigned long)RP1_ETH_MAC_BASE_PHYS, sc->mac_kva);
+		printf("rp1_eth: GEM MAC mapped at phys 0x%lx KVA %p (%s)\n",
+		    (unsigned long)mac_phys, sc->mac_kva,
+		    mac_from_fdt ? "from FDT" : "hardcoded, no FDT node");
 
 		/*
 		 * Step 2b: Map eth_cfg register window.
 		 * Using VM_MEMATTR_DEVICE (cache-inhibited) — same as bcm2712.c.
+		 *
+		 * ToDo: this address cannot be taken from the device tree,
+		 * because no device tree describes the block.  The RP1 subtree
+		 * has no eth_cfg node in the firmware-supplied DTB, and none
+		 * upstream either: in Linux's rp1.dtsi the GEM is the only
+		 * node in the area and its reg covers 0x100000+0x4000, which
+		 * stops exactly where eth_cfg begins at 0x104000.  Linux never
+		 * needs it -- macb(4) does not touch eth_cfg, and RP1 firmware
+		 * owns the RGMII glue -- so there is no binding to adopt.
+		 * Until one exists (an eth_cfg@104000 node, or a second reg
+		 * entry on ethernet@100000 with reg-names = "mac", "cfg"),
+		 * it is found by its fixed offset from the MAC window, which
+		 * holds wherever RP1's BAR has been placed.
 		 */
-		sc->cfg_kva = pmap_mapdev_attr(RP1_ETH_CFG_BASE_PHYS,
+		cfg_phys = mac_phys +
+		    (RP1_ETH_CFG_BASE_PHYS - RP1_ETH_MAC_BASE_PHYS);
+		sc->cfg_kva = pmap_mapdev_attr(cfg_phys,
 		    RP1_ETH_CFG_MAP_SIZE, VM_MEMATTR_DEVICE);
 		if (sc->cfg_kva == NULL) {
 			printf("rp1_eth: cannot map eth_cfg at 0x%lx\n",
-			    (unsigned long)RP1_ETH_CFG_BASE_PHYS);
+			    (unsigned long)cfg_phys);
 			pmap_unmapdev(sc->mac_kva, RP1_ETH_MAC_MAP_SIZE);
 			sysctl_ctx_free(&sc->sysctl_ctx);
 			mtx_destroy(&sc->sc_mtx);
@@ -514,8 +573,11 @@ rp1_eth_modevent(module_t mod __unused, int event, void *arg __unused)
 			return (ENXIO);
 		}
 		sc->cfg_mapped = 1;
-		printf("rp1_eth: eth_cfg mapped at phys 0x%lx KVA %p\n",
-		    (unsigned long)RP1_ETH_CFG_BASE_PHYS, sc->cfg_kva);
+		printf("rp1_eth: eth_cfg mapped at phys 0x%lx KVA %p "
+		    "(MAC + 0x%lx, no FDT node exists)\n",
+		    (unsigned long)cfg_phys, sc->cfg_kva,
+		    (unsigned long)(RP1_ETH_CFG_BASE_PHYS -
+		    RP1_ETH_MAC_BASE_PHYS));
 
 		/* Snapshot firmware-left register state before any writes. */
 		printf("rp1_eth: entry snapshot — "
@@ -699,9 +761,6 @@ rp1_eth_modevent(module_t mod __unused, int event, void *arg __unused)
 
 		/*
 		 * Step 3: Build sysctl tree hw.rp1_eth.*
-		 *
-		 * Note: in Milestone 2 this moves under dev.rp1_eth.0.* once
-		 * a synthesized device_t is available.
 		 */
 		tree = SYSCTL_ADD_NODE(&sc->sysctl_ctx,
 		    SYSCTL_STATIC_CHILDREN(_hw),
@@ -1300,26 +1359,57 @@ rp1_eth_modevent(module_t mod __unused, int event, void *arg __unused)
 			    MAC_RD4(sc, GEM_NET_CTRL));
 		}
 
-		/* Store global reference before M2 attach. */
+		/* Store global reference before the network attach. */
 		rp1_eth_sc = sc;
 
-		printf("rp1_eth: Milestone 1 ready — "
-		    "check hw.rp1_eth.cfg.status_decoded\n");
+		printf("rp1_eth: eth_cfg ready: "
+		    "see hw.rp1_eth.cfg.status_decoded\n");
 		printf("rp1_eth: eth_cfg.STATUS = 0x%08x\n",
 		    CFG_RD4(sc, ETH_CFG_STATUS));
 
-		/* Milestone 2: attach Cadence GEM to the network stack. */
+		/* Attach the Cadence GEM to the network stack. */
 		if (rp1eth_attach(sc) != 0)
-			printf("rp1_eth: Milestone 2 attach failed "
-			    "(M1 diagnostics still available)\n");
-		break;
+			printf("rp1_eth: network attach failed "
+			    "(hw.rp1_eth diagnostics still available)\n");
+	}
+	return (0);
+}
+
+static void
+rp1_eth_load_deferred(void *arg __unused)
+{
+	int error;
+
+	error = rp1_eth_load();
+	if (error != 0)
+		printf("rp1_eth: set-up failed (%d); no Ethernet\n", error);
+}
+
+/* -----------------------------------------------------------------------
+ * Module event handler
+ * ----------------------------------------------------------------------- */
+static int
+rp1_eth_modevent(module_t mod __unused, int event, void *arg __unused)
+{
+	struct rp1_eth_softc *sc;
+	int error;
+
+	switch (event) {
+	case MOD_LOAD:
+		if (!bcm2712_rp1_needs_pci())
+			return (rp1_eth_load());
+		error = bcm2712_rp1_defer(rp1_eth_load_deferred, NULL);
+		if (error != 0)
+			printf("rp1_eth: cannot wait for RP1 (%d)\n", error);
+		return (error);
 
 	case MOD_UNLOAD:
+		bcm2712_rp1_undefer(rp1_eth_load_deferred, NULL);
 		sc = rp1_eth_sc;
 		if (sc == NULL)
 			break;
 
-		/* Milestone 2: detach network interface first. */
+		/* Detach the network interface first. */
 		rp1eth_detach();
 
 		rp1_eth_sc = NULL;
@@ -1361,3 +1451,4 @@ static moduledata_t rp1_eth_mdata = {
 DECLARE_MODULE(rp1_eth, rp1_eth_mdata, SI_SUB_DRIVERS, SI_ORDER_ANY);
 MODULE_VERSION(rp1_eth, 1);
 MODULE_DEPEND(rp1_eth, bcm2712_pcie, 1, 1, 1);
+MODULE_DEPEND(rp1_eth, bcm2712, 1, 1, 1);	/* bcm2712_fdt.h */

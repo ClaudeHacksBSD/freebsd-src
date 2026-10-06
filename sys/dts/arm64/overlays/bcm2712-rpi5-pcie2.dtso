@@ -1,0 +1,117 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/*
+ * Copyright (c) 2026 Jeremy McMillan
+ *
+ * Raspberry Pi 5: the RP1 root complex (pcie2, PCIe x4) with RAM mapped
+ * 1:1 for DMA.
+ *
+ * The Raspberry Pi firmware applies this overlay to the device tree it
+ * hands over when the .dtbo is in the overlays/ directory of its boot
+ * partition and config.txt names it (dtoverlay=).  bcm2712_pcib needs it:
+ * without a 1:1 RAM mapping it warns and, on a controller it brings up
+ * from reset, leaves the device behind it in reset.
+ *
+ * Changes two properties of /axi/pcie@1000120000 (&pcie2), and adds one
+ * node under /reserved-memory:
+ *
+ *   dma-ranges   PCIe 0 -> CPU 0, 64 GB (1:1), plus the MIP MSI doorbell
+ *                entry unchanged.  Drops the vendor's RAM window at PCIe
+ *                0x10_0000_0000 and its 4 MB RP1 self-window at PCIe 0.
+ *   ranges       One 32-bit window: PCIe 0xc000_0000 -> CPU
+ *                0x1f_0000_0000, 16 MB (was PCIe 0 -> CPU 0x1f_0000_0000,
+ *                4 GB, plus a 64-bit prefetchable window).
+ *   /reserved-memory/freebsd-pcie-mem32@c0000000
+ *                CPU 0xc000_0000, 16 MB, no-map: the RAM that window
+ *                shadows.  bcm2712-rpi5-pcie1 adds the same node; applied
+ *                together, the two merge into one.
+ *
+ * Why:
+ *
+ * - FreeBSD does not translate dma-ranges: busdma hands a device the CPU
+ *   physical address.  RP1 masters (GEM, xHCI, DMA) put their AXI address
+ *   on PCIe unchanged below 512 GB ("PCIe Outbound direct mapped space",
+ *   RP1 peripherals datasheet RP-008370-DS-1, table 1), so the root complex
+ *   must map PCIe X to CPU X.  The firmware leaves that same mapping in the
+ *   controller when it is told not to reset the link (pciex4_reset=0).
+ *   Linux avoids everything below by translating: its tree puts RAM at
+ *   PCIe 0x10_0000_0000, clear of the 32-bit window.
+ * - The 32-bit window must sit below 4 GB on the PCIe side (RP1's three
+ *   BARs are 32-bit), where RAM is mapped 1:1 too.  So it shadows the RAM
+ *   at the same addresses: once the root port's memory window decodes an
+ *   address, DMA from RP1 to it goes back down to RP1 instead of to RAM.
+ *   bcm2712_pcib keeps the root port's window inside this range.
+ *
+ * The RAM reservation:
+ *
+ * - The EDK2 port for this board follows the same convention.  It puts
+ *   every controller's 32-bit window at PCIe 0xc000_0000
+ *   (PCI_RESERVED_MEM32_BASE) and withholds the RAM behind it from the
+ *   memory map.  The header of its Bcm2712PciHostBridgeLib.c states the
+ *   rule: keep the root port's decoded window out of DMA "either by
+ *   reserving system RAM or by imposing a limit".
+ * - This overlay reserves rather than limits.  A limit is a bus DMA tag
+ *   exclusion, and busdma widens an exclusion for child tags to everything
+ *   above it (child highaddr BUS_SPACE_MAXADDR), so nvme(4) and the RP1
+ *   Ethernet would bounce most buffers above 3 GB.  A reservation must
+ *   exist before the kernel builds its memory map, which only the device
+ *   tree (or the loader) can arrange; arm64's initarm() excludes
+ *   /reserved-memory no-map nodes.  bcm2712_pcib sees that the window then
+ *   shadows no RAM the kernel uses, and creates its tag without an
+ *   exclusion.  Remove the reservation and the exclusion comes back.
+ * - EDK2 sizes its reservation after enumerating; a static tree cannot, so
+ *   the window is fixed at 16 MB and the reservation matches it.  RP1 needs
+ *   8 MB (BAR1 4 MB, 4 MB-aligned; BAR0 16 KB; BAR2 64 KB).  The cost is
+ *   16 MB of RAM.  A PCIe device whose 32-bit BARs do not fit fails to get
+ *   them at attach; that is loud, not corruption.
+ * - Keep in step: this window's size, bcm2712-rpi5-pcie1's window size, and
+ *   the reservation (which must cover both windows' PCIe ranges, since both
+ *   controllers map RAM 1:1 and so shadow the same CPU addresses).
+ * - The reg below uses /reserved-memory's own cells in the firmware's
+ *   tree: #address-cells = 2, #size-cells = 1.
+ * - The firmware's tree gives that range to the operating system as
+ *   ordinary RAM (/memory) and reserves nothing in it.
+ *
+ * Only one outbound window: bcm2712_pcib programs one (WIN0, from the
+ * first range), and the generic FDT PCI host puts every memory range,
+ * prefetchable or not, in one resource manager.  A second range would be
+ * offered for BARs without being decoded.  RP1 has no prefetchable BARs.
+ *
+ * Not touched: the rp1 child's own ranges (still PCIe 0).  The rp1 PCI
+ * driver gives RP1's drivers the real BAR1 address instead.
+ */
+
+/dts-v1/;
+/plugin/;
+
+/ {
+	compatible = "brcm,bcm2712";
+
+	fragment@0 {
+		target = <&pcie2>;
+		__overlay__ {
+			#address-cells = <3>;
+			#size-cells = <2>;
+
+			/* 32-bit MEM: PCIe 0xc0000000 -> CPU 0x1f00000000, 16 MB */
+			ranges =
+			    <0x02000000 0x00 0xc0000000  0x1f 0x00000000  0x00 0x01000000>;
+
+			dma-ranges =
+			    /* RAM: PCIe 0 -> CPU 0, 64 GB (1:1) */
+			    <0x43000000 0x00 0x00000000  0x00 0x00000000  0x10 0x00000000>,
+			    /* MIP MSI doorbell: unchanged from the vendor DT */
+			    <0x03000000 0xff 0xfffff000  0x10 0x00130000  0x00 0x00001000>;
+		};
+	};
+
+	fragment@1 {
+		target-path = "/reserved-memory";
+		__overlay__ {
+			/* The RAM the 32-bit windows shadow: CPU 0xc0000000, 16 MB */
+			freebsd-pcie-mem32@c0000000 {
+				reg = <0x0 0xc0000000 0x01000000>;
+				no-map;
+			};
+		};
+	};
+};

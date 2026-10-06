@@ -1,3 +1,27 @@
+/*-
+ * SPDX-License-Identifier: BSD-3-Clause AND ISC
+ *
+ * Copyright (c) 2026 Jeremy McMillan
+ *
+ * Parts of this driver follow the Broadcom brcmfmac driver and its FreeBSD
+ * port, freebsd-brcmfmac, which carry this notice:
+ *
+ * Copyright (c) 2010-2022 Broadcom Corporation
+ * Copyright (c) brcmfmac-freebsd contributors
+ *
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
 /*
  * cyw_sdio.c — F1 backplane access, F2 data channel, clock management
  *
@@ -7,8 +31,7 @@
  *
  * F2 carries SDPCM-framed WLAN packets and is accessed via extended writes.
  *
- * Locking: Milestone 1 has no concurrent access paths (no interrupts, no
- * ioctl, single callout).  All locking is deferred to Milestone 2.  The
+ * Locking: the functions here take no lock of their own.  The
  * SDIO bus methods internally acquire their own CAM SIM lock; holding our
  * private mutex while calling them would violate lock order (bus framework
  * holds Giant during device_attach which establishes Giant > sc->mtx, but
@@ -369,7 +392,7 @@ cyw_arm_release(struct cyw_softc *sc, uint32_t rstvec)
  * We walk it to find the core with ID BHND_COREID_SDIOD (0x829) and return
  * the base address of its first DEVICE-type slave port region.
  *
- * Reference: /usr/src/sys/dev/bhnd/bcma/bcma_eromreg.h and bcma_erom.c.
+ * Reference: sys/dev/bhnd/bcma/bcma_eromreg.h and bcma_erom.c.
  * ------------------------------------------------------------------------- */
 static uint32_t
 cyw_erom_find_sdio_core_base(struct cyw_softc *sc)
@@ -417,6 +440,10 @@ cyw_erom_find_sdio_core_base(struct cyw_softc *sc)
 			(void)ndp;
 
 			in_sdiod = (corid == BHND_COREID_SDIOD);
+			if (in_sdiod)
+				sc->sdio_core_rev =
+				    (coreb & BCMA_EROM_COREB_REV_MASK) >>
+				    BCMA_EROM_COREB_REV_SHIFT;
 			CYW_DPRINTF(sc, CYW_DBG_SDIO,
 			    "EROM: core 0x%03x nmp=%u%s\n",
 			    corid, nmp, in_sdiod ? " *** SDIOD ***" : "");
@@ -545,6 +572,9 @@ cyw_sdio_attach(struct cyw_softc *sc)
 
 	/* Find real SDIO device core base via EROM scan */
 	sc->sdio_core_base = cyw_erom_find_sdio_core_base(sc);
+	if (sc->sdio_core_base != 0)
+		device_printf(sc->dev, "SDIO device core rev %u\n",
+		    sc->sdio_core_rev);
 
 	/*
 	 * For ARM CR4 chips, brcmf_chip_get_raminfo() uses brcmf_chip_tcm_ramsize()
@@ -560,16 +590,27 @@ cyw_sdio_attach(struct cyw_softc *sc)
 	device_printf(sc->dev, "RAM: base=0x%08x size=0x%x (%u KB)\n",
 	    sc->ram_base, sc->ram_size, sc->ram_size / 1024);
 
-	sdio_f0_write_1(sc->f1,
-	    SDIO_FBR_BASE(2) + SDIO_FBR_BLKSIZE_LO,
-	    CYW_F2_BLKSIZE & 0xff, &err);
-	if (err)
+	/*
+	 * F2 block size, through sdio_set_block_size() so that the card's
+	 * FBR register and sdiob's cur_blksize agree.
+	 *
+	 * Writing the FBR bytes directly through F0 is not enough.  The card
+	 * then frames F2 blocks of CYW_F2_BLKSIZE while sdiob, never told,
+	 * keeps cur_blksize at the CIS maximum of 512 and issues every F2
+	 * transfer of 512 bytes or more as block-mode CMD53 with 512-byte
+	 * blocks.  The card loses step after its first block and the host
+	 * reports DATA_TIMEOUT together with the command response
+	 * (INT_STATUS 0x108001), which looks like block-mode CMD53 failing
+	 * on this hardware.  F1 is set the same way.
+	 */
+	err = sdio_set_block_size(sc->f2, CYW_F2_BLKSIZE);
+	if (err) {
+		device_printf(sc->dev, "F2 set_block_size(%u) failed: %d\n",
+		    CYW_F2_BLKSIZE, err);
 		return (err);
-	sdio_f0_write_1(sc->f1,
-	    SDIO_FBR_BASE(2) + SDIO_FBR_BLKSIZE_HI,
-	    (CYW_F2_BLKSIZE >> 8) & 0xff, &err);
-	if (err)
-		return (err);
+	}
+	device_printf(sc->dev, "F2 block size %u (card and host)\n",
+	    sc->f2->cur_blksize);
 
 	/* Halt ARM so we can download firmware */
 	cyw_arm_halt(sc);
@@ -579,7 +620,7 @@ cyw_sdio_attach(struct cyw_softc *sc)
 }
 
 /* -------------------------------------------------------------------------
- * cyw_sdio_detach — deassert chip (minimal cleanup for Milestone 1)
+ * cyw_sdio_detach — deassert chip
  * ------------------------------------------------------------------------- */
 void
 cyw_sdio_detach(struct cyw_softc *sc)

@@ -1,0 +1,16 @@
+$FreeBSD$
+
+NOTE ANY CHANGES YOU MAKE TO THE BOOTBLOCKS HERE.
+
+3.1:	The SD card as disk0 (polled SDHCI, read-only), and rootdev from
+	loader.env on the firmware's FAT: the loader can read /boot from a
+	UFS on the card instead of its memory disk.
+3.0:	Lua interpreter and boot menu, at the Lua scripts API level that
+	stand/lua requires (core.lua checks for 3.0, as stand/efi/loader/version
+	declares it).  Also MMU and caches on, and the HDMI console second.
+0.3:	VPU property mailbox: vcinfo, tryboot and untryboot, and the
+	banner says whether this boot used config.txt or tryboot.txt.
+0.2:	Kernel handoff (arm64 ELF, staging translation, modulep above
+	KERNBASE), and reboot/poweroff via PSCI.
+0.1:	Initial Raspberry Pi 5 non-EFI loader: PL011 console and an
+	embedded memory disk, entered directly by the VPU firmware.

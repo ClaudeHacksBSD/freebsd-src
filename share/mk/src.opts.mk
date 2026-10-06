@@ -132,6 +132,7 @@ __DEFAULT_YES_OPTIONS = \
     LOADER_LUA \
     LOADER_OFW \
     LOADER_PXEBOOT \
+    LOADER_RPIBOOT \
     LOADER_UBOOT \
     LOADER_USERBOOT \
     LOADER_ZFS \
@@ -293,7 +294,7 @@ __DEFAULT_DEPENDENT_OPTIONS+=	LLVM_TARGET_${__llt:${__LLVM_TARGET_FILT}:tu}/LLVM
 .endif
 .endfor
 
-__DEFAULT_NO_OPTIONS+=LLVM_TARGET_BPF LLVM_TARGET_MIPS
+__DEFAULT_NO_OPTIONS+=LLVM_TARGET_BPF LLVM_TARGET_LOONGARCH
 
 .include <bsd.compiler.mk>
 
@@ -329,6 +330,10 @@ BROKEN_OPTIONS+=LOADER_OFW
 # KBOOT is only for powerpc64 (powerpc64le broken) amd64 and aarch64
 .if ${__T} != "powerpc64" && ${__T} != "amd64" && ${__T} != "aarch64"
 BROKEN_OPTIONS+=LOADER_KBOOT
+.endif
+# RPIBOOT, the Raspberry Pi 5 firmware-entered loader, is only for aarch64
+.if ${__T} != "aarch64"
+BROKEN_OPTIONS+=LOADER_RPIBOOT
 .endif
 # UBOOT is only for arm, and big-endian powerpc
 .if (${__T:Marm*} == "" && ${__T:Mpowerpc*} == "") || ${__T} == "powerpc64le"
@@ -433,6 +438,7 @@ MK_MITKRB5:=	no
 # if it is off.
 .if ${MK_DTRACE} == "no"
 MK_CTF:=	no
+MK_DTRACE_TESTS:= no
 .endif
 
 .if ${MK_MAIL} == "no"

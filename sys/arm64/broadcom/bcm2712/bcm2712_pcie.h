@@ -1,9 +1,11 @@
 /*-
- * SPDX-License-Identifier: BSD-2-Clause
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * Copyright (c) 2026 Jeremy McMillan
  *
  * bcm2712_pcie.h — KPI for rp1_eth to register its interrupt filter.
  *
- * Include this in rp1_eth_cfg.c (M1 module init) or rp1_eth.c (M2/M3)
+ * Include this in rp1_eth_cfg.c or rp1_eth.c
  * to call bcm2712_pcie_register_rp1_intr() during attach and
  * bcm2712_pcie_deregister_rp1_intr() during detach.
  */

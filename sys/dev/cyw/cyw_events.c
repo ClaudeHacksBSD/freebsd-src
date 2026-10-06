@@ -1,5 +1,29 @@
+/*-
+ * SPDX-License-Identifier: BSD-3-Clause AND ISC
+ *
+ * Copyright (c) 2026 Jeremy McMillan
+ *
+ * Parts of this driver follow the Broadcom brcmfmac driver and its FreeBSD
+ * port, freebsd-brcmfmac, which carry this notice:
+ *
+ * Copyright (c) 2010-2022 Broadcom Corporation
+ * Copyright (c) brcmfmac-freebsd contributors
+ *
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
 /*
- * cyw_events.c — firmware event dispatcher (Milestone 2.4a)
+ * cyw_events.c — firmware event dispatcher
  *
  * SDPCM channel 1 (CYW_SDPCM_CHAN_EVENT) frame layout:
  *
@@ -19,9 +43,9 @@
  *
  * cyw_event_attach() subscribes to events via the "event_msgs" IOVAR.
  * cyw_event_dispatch() is called by cyw_sdpcm_task() on CHAN_EVENT frames.
- * cyw_event_register() lets future milestones install per-code handlers.
+ * cyw_event_register() installs per-code handlers.
  *
- * Reference: /usr/src/sys/contrib/dev/broadcom/brcm80211/brcmfmac/fweh.{c,h}
+ * Reference: sys/contrib/dev/broadcom/brcm80211/brcmfmac/fweh.{c,h}
  */
 
 #include <sys/param.h>
@@ -192,9 +216,9 @@ cyw_event_attach(struct cyw_softc *sc)
 /* -------------------------------------------------------------------------
  * cyw_event_register / cyw_event_unregister
  *
- * Register or clear a per-code handler.  Called by future milestones:
- *   Milestone 2.3 (scan):  registers CYW_E_ESCAN_RESULT handler
- *   Milestone 2.5 (assoc): registers CYW_E_LINK, CYW_E_SET_SSID, etc.
+ * Register or clear a per-code handler.  Used by:
+ *   scan:        the CYW_E_ESCAN_RESULT handler
+ *   association: CYW_E_LINK, CYW_E_SET_SSID, etc.
  *
  * Safe to call from any context; handler registration is serialised by
  * sc->mtx.  Handlers themselves are called from cyw_sdpcm_task (process

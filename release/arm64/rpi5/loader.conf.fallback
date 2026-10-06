@@ -1,0 +1,43 @@
+# loader.conf on the memory disk of the installer card's rpiboot.bin.
+#
+# THE FALLBACK.  The loader normally boots from the card's freebsd-boot
+# partition, which loader.env on the FAT names (rootdev=disk0s2a:), and
+# never reads this file.  It comes here only when that partition cannot be
+# used; it says so, and this starts the installer with the kernel on the
+# memory disk.
+#
+# Kernel: md0:/boot/kernel/kernel, the RPI5 kernel, stripped.  Its modules
+# are in /boot/kernel on the freebsd-boot partition, which the installer
+# mounts at /boot.
+# Root: the card's installer partition, by label, then by its name in the SD
+# slot (vfs.root.mountfrom takes a list).
+
+kernel="kernel"
+
+vfs.root.mountfrom="ufs:/dev/ufs/freebsd-install ufs:/dev/sdda0s3a"
+vfs.mountroot.timeout="30"
+
+loader_menu_multi_user_prompt="Installer"
+
+# cyw43455 firmware, preloaded because cyw attaches before root is mounted.
+cyw43455_bin_load="YES"
+cyw43455_bin_type="firmware"
+cyw43455_bin_name="/boot/firmware/cyw43455/brcmfmac43455-sdio.bin"
+cyw43455_txt_load="YES"
+cyw43455_txt_type="firmware"
+cyw43455_txt_name="/boot/firmware/cyw43455/brcmfmac43455-sdio.txt"
+cyw43455_clm_load="YES"
+cyw43455_clm_type="firmware"
+cyw43455_clm_name="/boot/firmware/cyw43455/brcmfmac43455-sdio.clm_blob"
+
+# WiFi SDIO runs 4-bit at 50 MHz, not 1-bit at 400 kHz.
+hw.sdiob.bus_setup="1"
+
+# /etc/hostid and /boot/entropy live on the root, not on md0:.
+hostuuid_load="NO"
+entropy_cache_load="NO"
+
+# Serial first, HDMI second; the installer starts on both.
+boot_serial="YES"
+boot_multicons="YES"
+autoboot_delay="3"

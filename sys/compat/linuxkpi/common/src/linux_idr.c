@@ -243,24 +243,32 @@ idr_remove_locked(struct idr *idr, int id)
 	if (il == NULL || id > idr_max(idr))
 		return (NULL);
 	/*
+	 * An ID that is not allocated is not an error: idr_remove() returns
+	 * NULL for it, and callers hand it IDs that come straight from user
+	 * space and rely on that (a DRM sync object handle destroyed a second
+	 * time, for one).  Look before changing anything, so that the
+	 * free-space bitmaps stay true when there is nothing to remove.
+	 */
+	while (layer && il) {
+		il = il->ary[idr_pos(id, layer)];
+		layer--;
+	}
+	idx = id & IDR_MASK;
+	if (il == NULL || (il->bitmap & (1 << idx)) != 0)
+		return (NULL);
+	/*
 	 * Walk down the tree to this item setting bitmaps along the way
 	 * as we know at least one item will be free along this path.
 	 */
-	while (layer && il) {
+	il = idr->top;
+	layer = idr->layers - 1;
+	while (layer) {
 		idx = idr_pos(id, layer);
 		il->bitmap |= 1 << idx;
 		il = il->ary[idx];
 		layer--;
 	}
 	idx = id & IDR_MASK;
-	/*
-	 * At this point we've set free space bitmaps up the whole tree.
-	 * We could make this non-fatal and unwind but linux dumps a stack
-	 * and a warning so I don't think it's necessary.
-	 */
-	if (il == NULL || (il->bitmap & (1 << idx)) != 0)
-		panic("idr_remove: Item %d not allocated (%p, %p)\n",
-		    id, idr, il);
 	res = il->ary[idx];
 	il->ary[idx] = NULL;
 	il->bitmap |= 1 << idx;

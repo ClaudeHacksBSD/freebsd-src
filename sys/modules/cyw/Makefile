@@ -1,3 +1,9 @@
+#
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# Copyright (c) 2026 Jeremy McMillan
+#
+
 .PATH: ${SRCTOP}/sys/dev/cyw
 
 KMOD=	cyw

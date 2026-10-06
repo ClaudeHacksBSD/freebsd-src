@@ -1,0 +1,245 @@
+.\"-
+.\" SPDX-License-Identifier: BSD-2-Clause
+.\"
+.\" Copyright 2026 The FreeBSD Project.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions are
+.\" met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright notice,
+.\"    this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS "AS IS" AND ANY
+.\" EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+.\" WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+.\" DISCLAIMED. IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE FOR ANY
+.\" DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+.\" (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+.\" SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+.\" CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\" The views and conclusions contained in the software and documentation are
+.\" those of the authors and should not be interpreted as representing
+.\" official policies, either expressed or implied, of the FreeBSD Project.
+.\"
+.\" Author: Jeremy McMillan
+.\" Author: Claude Opus 5.5
+.\" Author: FreeBSD Contributors
+.\"
+.\" Describes a driver written from a functional specification of the
+.\" Raspberry Pi firmware clock interface.
+.\"
+.Dd October 4, 2026
+.Dt RPI_FW_CLK 4 aarch64
+.Os
+.Sh NAME
+.Nm rpi_fw_clk
+.Nd Raspberry Pi firmware clocks
+.Sh SYNOPSIS
+To compile this driver into the kernel, place the following lines in the
+kernel configuration file:
+.Bd -ragged -offset indent
+.Cd "options FDT"
+.Cd "device clk"
+.Cd "device rpi_fw_clk"
+.Ed
+.Pp
+To load the driver as a module:
+.Bd -literal -offset indent
+kldload rpi_fw_clk
+.Ed
+.Pp
+The driver needs the Raspberry Pi firmware mailbox driver,
+.Li rpi_fw .
+A module loaded after the system has started does not get its device by
+itself; see
+.Sx Attaching .
+.Sh DESCRIPTION
+On the Raspberry Pi the VideoCore firmware owns the clocks of the system on
+a chip.
+It changes them by itself, to protect the chip against overheating and
+under-voltage, so they are read and set only by asking the firmware, never
+by programming the clock hardware.
+The
+.Nm
+driver is the clock provider for the clocks the firmware offers.
+A consumer's device tree node names one by the firmware's clock id.
+.Pp
+At attach the driver asks the firmware which clocks exist.
+Of those it makes a clock for each of
+.Li arm ,
+.Li core ,
+.Li v3d ,
+.Li isp ,
+.Li pixel ,
+.Li hevc ,
+.Li m2mc ,
+.Li pixel_bvb ,
+.Li vec
+and
+.Li disp ,
+called
+.Li rpi_fw_ Ns Ar name .
+The firmware's other clocks
+.Po
+.Li emmc ,
+.Li uart ,
+.Li h264 ,
+.Li sdram ,
+.Li pwm
+and
+.Li emmc2
+.Pc
+are shown by the driver's sysctl variables and are not offered to
+consumers.
+The clocks have no parents: the parent the firmware reports for each is
+shown and not used.
+.Pp
+The driver behaves as follows:
+.Bl -bullet
+.It
+The lowest and the highest rate the firmware allows a clock are read once,
+at attach, and bound the rates the driver sets.
+.It
+Enabling or disabling a clock sends nothing to the firmware.
+Whether a clock is running is what the firmware says.
+.It
+Every read of a rate asks the firmware.
+A read that fails gives 0 Hz.
+.It
+The driver does not round rates.
+The firmware does, and the rate it applied is read back from it.
+.It
+A new rate is sent to the firmware only if it differs from the rate the
+clock has.
+.El
+.Pp
+A request for a rate is treated in one of two ways.
+For
+.Li arm
+the requested rate is brought into the clock's range and set.
+Every other clock is kept as low as its consumer allows: the requested
+rate is taken as the least the consumer needs, the clock is set to the
+larger of it and the lowest rate of the clock's range, and a request above
+the highest rate of the range fails with
+.Er EINVAL .
+.Pp
+The clock
+.Li m2mc
+has a floor of 120 MHz: with that clock stopped, an access to the HDMI
+hardware it drives locks the bus.
+The lowest rate of its range is the larger of the floor and the lowest
+rate the firmware allows, but not more than the highest the firmware
+allows.
+If the clock is below that rate when the driver attaches it is set to it at
+once, before any consumer can reach it, and the driver sets it to no less
+afterwards.
+.Pp
+The clock framework keeps the last rate it has seen for a clock, and the
+firmware changes clocks without telling anyone.
+A kernel consumer that needs the rate or the state of a clock as it is now
+calls
+.Fn rpi_fw_clk_query ,
+and
+.Fn rpi_fw_clk_max_rate
+for the highest rate the firmware allows; both are declared in
+.In arm64/broadcom/bcm2712/rpi_fw_clk.h .
+.Ss Attaching
+A generic driver takes every device tree node named
+.Dq clocks .
+Compiled into the kernel,
+.Nm
+takes the firmware's node ahead of it.
+If the firmware mailbox has not attached by then, the driver keeps the
+node and asks the firmware again at each later pass over the bus, and a
+last time when interrupts are enabled.
+.Pp
+Loaded as a module after the system has started, the driver finds the node
+already attached to the generic driver.
+The node is then moved with
+.Xr devctl 8 :
+.Bd -literal -offset indent
+devctl set driver -f ofw_clkbusN rpi_fw_clk
+.Ed
+.Pp
+Once its clocks exist the driver cannot be detached, and the module cannot
+be unloaded: a clock cannot be taken away from the clock framework.
+.Sh HARDWARE
+The
+.Nm
+driver supports the firmware's clock node, a child of the firmware node,
+with the compatible string:
+.Pp
+.Bl -bullet -compact
+.It
+raspberrypi,firmware-clocks
+.El
+.Sh SYSCTL VARIABLES
+The following read-only variables are available under
+.Va dev.rpi_fw_clk.%d .
+There is a group
+.Va %s
+for each clock the firmware lists, by its name.
+.Bl -tag -width indent
+.It Va status
+How far the driver is:
+.Dq waiting for the firmware mailbox ,
+.Dq registered
+or
+.Dq failed .
+.It Va %s.id
+The firmware's id of the clock.
+.It Va %s.parent
+The id of the parent the firmware reports for it.
+.It Va %s.fw_min , %s.fw_max
+The lowest and the highest rate the firmware allows, in Hz, as read at
+attach.
+Reading one fails if the firmware refused to give it.
+.It Va %s.rate
+The clock's rate in Hz, asked of the firmware when the variable is read.
+.It Va %s.state
+The clock's state word, asked of the firmware when the variable is read.
+Bit 0 is set if the clock is running, bit 1 if there is no such clock.
+.It Va %s.lower , %s.upper
+The range into which the driver brings the rates it sets, in Hz.
+Present for the clocks offered to consumers.
+.El
+.Sh DIAGNOSTICS
+.Bl -diag
+.It "rpi_fw_clk%d: waiting for the firmware mailbox"
+The mailbox driver has not attached yet; the driver will ask again.
+Printed in a verbose boot.
+.It "rpi_fw_clk%d: the firmware mailbox did not attach; no clocks"
+.It "rpi_fw_clk%d: the firmware mailbox is not attached"
+There is no mailbox driver to ask the firmware through.
+.It "rpi_fw_clk%d: cannot list the clocks: error %d"
+.It "rpi_fw_clk%d: firmware lists clock id %u, above %u"
+.It "rpi_fw_clk%d: cannot read the range of clock %s: error %d"
+.It "rpi_fw_clk%d: cannot register the clocks: error %d"
+The firmware's answers could not be used.
+There are no clocks.
+.It "rpi_fw_clk%d: clock %s: the firmware maximum, %u Hz, is below the floor of %u Hz; the maximum is used"
+The firmware allows the clock no rate as high as its floor.
+The lowest rate of the clock's range is then the highest the firmware
+allows.
+.It "rpi_fw_clk%d: cannot raise clock %s to %u Hz: error %d"
+The firmware did not accept the least rate the driver sets for the clock.
+There are no clocks.
+.It "rpi_fw_clk%d: cannot set clock %s to %ju Hz: error %d"
+The firmware did not accept a rate a consumer asked for.
+Printed at most once a second.
+.El
+.Sh SEE ALSO
+.Xr fdt 4 ,
+.Xr v3d 4 ,
+.Xr devctl 8
+.Sh CAVEATS
+The rate the clock framework reports for one of these clocks is the one it
+saw last, which need not be the clock's rate now.

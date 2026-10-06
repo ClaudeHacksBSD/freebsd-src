@@ -1,5 +1,29 @@
+/*-
+ * SPDX-License-Identifier: BSD-3-Clause AND ISC
+ *
+ * Copyright (c) 2026 Jeremy McMillan
+ *
+ * Parts of this driver follow the Broadcom brcmfmac driver and its FreeBSD
+ * port, freebsd-brcmfmac, which carry this notice:
+ *
+ * Copyright (c) 2010-2022 Broadcom Corporation
+ * Copyright (c) brcmfmac-freebsd contributors
+ *
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
 /*
- * cyw_scan.c — escan implementation (Milestone 2.4)
+ * cyw_scan.c — escan implementation
  *
  * cyw_do_escan()        — build brcmf_escan_params_le, issue "escan" IOVAR
  * cyw_abort_escan()     — send escan ABORT action
@@ -9,7 +33,7 @@
  * The CYW43455 firmware uses D11N chanspec encoding.
  * scan_start_task / scan_end_task run on sc->scan_tq (separate from rx_tq).
  *
- * Reference: /Users/aphor/src/freebsd-brcmfmac.git/src/scan.c
+ * Reference: freebsd-brcmfmac src/scan.c
  */
 
 #include <sys/param.h>

@@ -6,6 +6,8 @@
 #  dvdrom: Builds release DVD-ROM media (dvd1.iso)
 #  memstick: Builds memory stick image (memstick.img)
 #  mini-memstick: Builds minimal memory stick image (mini-memstick.img)
+#  rpi5-memstick: Builds Raspberry Pi 5 installer card image
+#            (rpi5-memstick.img)
 #  ftp: Sets up FTP distribution area (ftp)
 #  release: Invokes real-release, vm-release, cloudware-release and oci-release targets
 #  real-release: Build all media and FTP distribution area
@@ -31,6 +33,10 @@
 #  NOPORTS:  if set, do not distribute ports tree
 #  NOSRC:    if set, do not distribute source tree
 #  WITH_DVD: if set, generate dvd1.iso
+#  WITH_RPI5_MEDIA: if set, generate rpi5-memstick.img (aarch64 only).
+#            RPI5_FWDIR, RPI5_CYWDIR, RPI5_OVLDIR, RPI5_LOADER and
+#            RPI5_MD_SIZE are passed to arm64/make-rpi5-memstick.sh, which
+#            describes them.
 #  WITH_COMPRESSED_IMAGES: if set, compress installation images with xz(1)
 #		(uncompressed images are not removed)
 #  WITH_VMIMAGES: if set, build virtual machine images with the release
@@ -134,6 +140,11 @@ RELEASE_TARGETS+= memstick.img
 RELEASE_TARGETS+= mini-memstick.img
 IMAGES+=	memstick.img
 IMAGES+=	mini-memstick.img
+.endif
+.if ${TARGET_ARCH} == "aarch64" && \
+    defined(WITH_RPI5_MEDIA) && !empty(WITH_RPI5_MEDIA)
+RELEASE_TARGETS+= rpi5-memstick.img
+IMAGES+=	rpi5-memstick.img
 .endif
 .if !defined(NOPKGBASE) || empty(NOPKGBASE)
 RELEASE_TARGETS+= pkgbase-repo.tar
@@ -419,6 +430,16 @@ memstick.img: disc1-memstick
 mini-memstick: mini-memstick.img
 mini-memstick.img: bootonly-memstick
 	cd bootonly-memstick && sh ${.CURDIR}/${TARGET}/make-memstick.sh ./METALOG ../${.TARGET}
+
+.for _v in RPI5_FWDIR RPI5_CYWDIR RPI5_OVLDIR RPI5_LOADER RPI5_MD_SIZE
+.if defined(${_v}) && !empty(${_v})
+RPI5_ENV+=	${_v}=${${_v}:Q}
+.endif
+.endfor
+rpi5-memstick: rpi5-memstick.img
+rpi5-memstick.img: disc1-memstick
+	cd disc1-memstick && env ${RPI5_ENV} \
+	    sh ${.CURDIR}/arm64/make-rpi5-memstick.sh ./METALOG ../${.TARGET}
 
 pkg-stage: dvd
 .if !defined(NOPKG) || empty(NOPKG)

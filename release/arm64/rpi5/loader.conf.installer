@@ -1,0 +1,9 @@
+
+# ---- The installer ----
+# The kernel here boots the installer on this card's last partition.  An
+# install replaces this part with the new system's own settings.
+kernel="kernel"
+vfs.root.mountfrom="ufs:/dev/ufs/freebsd-install"
+loader_menu_multi_user_prompt="Installer"
+# No /boot/entropy until a system has run from this partition.
+entropy_cache_load="NO"
