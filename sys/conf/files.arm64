@@ -640,7 +640,6 @@ arm64/broadcom/rp1/rp1.c				optional rp1 bcm2712 fdt pci
 arm64/broadcom/rp1/rp1_eth.c				optional rp1_eth fdt
 arm64/broadcom/rp1/rp1_eth_cfg.c			optional rp1_eth fdt
 arm64/broadcom/rp1/rp1_gpio.c				optional rp1_gpio gpio fdt
-arm64/broadcom/rp1/rp1_pcie2_recon.c			optional rp1_pcie2_recon
 arm64/broadcom/brcmmdio/mdio_mux_iproc.c		optional soc_brcm_ns2 fdt
 arm64/broadcom/brcmmdio/mdio_nexus_iproc.c		optional soc_brcm_ns2 fdt
 arm64/broadcom/brcmmdio/mdio_ns2_pcie_phy.c		optional soc_brcm_ns2 fdt pci

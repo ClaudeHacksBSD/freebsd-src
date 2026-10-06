@@ -368,7 +368,6 @@ SUBDIR=	\
 	${_rp1} \
 	${_rp1_eth} \
 	${_rp1_gpio} \
-	${_rp1_pcie2_recon} \
 	${_rpi5_fan} \
 	${_rpi_fw} \
 	${_rpi_fw_clk} \
@@ -764,7 +763,6 @@ _cyw=		cyw
 _rp1=		rp1
 _rp1_eth=	rp1_eth
 _rp1_gpio=	rp1_gpio
-_rp1_pcie2_recon=	rp1_pcie2_recon
 _rpi5_fan=	rpi5_fan
 _rpi_fw=	rpi_fw
 _rpi_fw_clk=	rpi_fw_clk
