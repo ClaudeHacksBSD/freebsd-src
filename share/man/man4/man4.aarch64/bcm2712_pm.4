@@ -6,7 +6,7 @@
 .\" Describes a driver written from a functional specification of the
 .\" BCM2712 PM block.
 .\"
-.Dd October 4, 2026
+.Dd October 6, 2026
 .Dt BCM2712_PM 4 aarch64
 .Os
 .Sh NAME
@@ -142,8 +142,17 @@ Printed in a verbose boot.
 .El
 .Sh SEE ALSO
 .Xr fdt 4 ,
-.Xr v3d 4 ,
 .Xr kldload 8
+.Sh HISTORY
+The
+.Nm
+driver first appeared in
+.Fx 16.0 .
+.Sh AUTHORS
+The
+.Nm
+driver and this manual page were written by
+.An Jeremy McMillan .
 .Sh CAVEATS
 That the register at offset 0x10c is the parent domain's power switch on
 the BCM2712, with the fields it has on the other SoCs of the family, is not

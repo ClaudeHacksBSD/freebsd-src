@@ -6,7 +6,7 @@
 .\" Describes a driver written from a functional specification of the
 .\" Raspberry Pi firmware clock interface.
 .\"
-.Dd October 4, 2026
+.Dd October 6, 2026
 .Dt RPI_FW_CLK 4 aarch64
 .Os
 .Sh NAME
@@ -208,8 +208,17 @@ Printed at most once a second.
 .El
 .Sh SEE ALSO
 .Xr fdt 4 ,
-.Xr v3d 4 ,
 .Xr devctl 8
+.Sh HISTORY
+The
+.Nm
+driver first appeared in
+.Fx 16.0 .
+.Sh AUTHORS
+The
+.Nm
+driver and this manual page were written by
+.An Jeremy McMillan .
 .Sh CAVEATS
 The rate the clock framework reports for one of these clocks is the one it
 saw last, which need not be the clock's rate now.

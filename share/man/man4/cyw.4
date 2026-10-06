@@ -3,14 +3,12 @@
 .\"
 .\" Copyright (c) 2026 Jeremy McMillan
 .\"
-.\" cyw.4 — manual page for the cyw CYW43455 SDIO WiFi driver
-.\"
-.Dd September 28, 2026
+.Dd October 6, 2026
 .Dt CYW 4
 .Os
 .Sh NAME
 .Nm cyw
-.Nd Cypress CYW43455 802.11ac SDIO WiFi driver
+.Nd Cypress CYW43455 IEEE 802.11ac SDIO wireless network driver
 .Sh SYNOPSIS
 To compile this driver into the kernel, place the following lines in
 your kernel configuration file:
@@ -31,10 +29,9 @@ following lines in
 cyw_load="YES"
 .Ed
 .Pp
-To also preload the firmware images (required when the module loads before the
-root filesystem is mounted — see
-.Sx FIRMWARE DELIVERY
-below):
+To also preload the firmware images, which is required when the module is
+loaded before the root file system is mounted
+.Pq see Sx FIRMWARE DELIVERY :
 .Bd -literal -offset indent
 brcm_fw_bin_load="YES"
 brcm_fw_bin_name="/boot/firmware/cyw43455/brcmfmac43455-sdio.bin"
@@ -49,15 +46,24 @@ brcm_fw_clm_type="firmware"
 .Sh DESCRIPTION
 The
 .Nm
-driver provides support for the Cypress (Broadcom) CYW43455 802.11ac + BT 5.0
-combo chip as found on the Raspberry Pi 5.
-The driver covers the WLAN SDIO path (functions F0–F2); Bluetooth is not
-supported.
+driver provides support for the WLAN function of the Cypress (Broadcom)
+CYW43455 IEEE 802.11ac and Bluetooth 5.0 combination chip.
+The driver uses SDIO functions F0 through F2.
+Bluetooth is not supported.
 .Pp
 The chip is a FullMAC design: the 802.11 MAC and PHY run inside the chip's
 ARM CR4 firmware.
 The driver downloads the firmware binary and NVRAM configuration at attach
 time, then communicates via SDPCM-framed BCDC IOVARs over SDIO function F2.
+.Sh HARDWARE
+The
+.Nm
+driver supports the following wireless chip:
+.Pp
+.Bl -bullet -compact
+.It
+Cypress CYW43455, as found on the Raspberry Pi 5
+.El
 .Sh FIRMWARE DELIVERY
 Firmware files are
 .Em not
@@ -87,10 +93,10 @@ subsystem provides two delivery paths:
 .Bl -enum
 .It
 .Em kldload path :
-After the root filesystem is mounted,
+After the root file system is mounted,
 .Xr firmware 9
-reads the files lazily from disk on a dedicated taskqueue thread that has
-filesystem context.
+reads the files from disk on a dedicated taskqueue thread that has
+file system context.
 No special
 .Xr loader.conf 5
 configuration is needed for this path.
@@ -102,7 +108,7 @@ is loaded by the boot loader (via
 .Va cyw_load="YES"
 in
 .Xr loader.conf 5 )
-before the root filesystem is mounted, there is no filesystem context.
+before the root file system is mounted, there is no file system context.
 The SYNOPSIS block above shows the required
 .Xr loader.conf 5
 entries that instruct the loader to preload each binary image into kernel
@@ -185,9 +191,9 @@ Expected to stay 0.
 .It Va tx_queue_drops
 Frames dropped because the transmit queue was full.
 .It Va tx_eio_count
-Writes to the chip that failed and were terminated, as Linux
-.Fn brcmf_sdio_txfail
-does: F2 aborted, the write frame terminated, and its byte count polled.
+Writes to the chip that failed.
+For each, F2 is aborted, the write frame terminated, and its byte count
+polled.
 .It Va rx_credit_clamps
 Received credit values more than 0x40 ahead of
 .Va tx_seq ,
@@ -251,15 +257,23 @@ It is logged after the failed frame has been terminated, with the chip's
 sleep and clock state.
 .El
 .Sh SEE ALSO
-.Xr sdiob 4 ,
+.Xr wlan 4 ,
 .Xr loader.conf 5 ,
 .Xr dmesg 8 ,
+.Xr ifconfig 8 ,
 .Xr kldload 8 ,
+.Xr wpa_supplicant 8 ,
 .Xr firmware 9
 .Sh HISTORY
 The
 .Nm
-driver was written for FreeBSD/arm64 on the Raspberry Pi 5.
+driver first appeared in
+.Fx 16.0 .
+.Sh AUTHORS
+The
+.Nm
+driver and this manual page were written by
+.An Jeremy McMillan .
 .Sh BUGS
 Bluetooth is not yet supported.
 The driver uses polling rather than interrupt-driven SDIO I/O.
